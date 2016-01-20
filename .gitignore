@@ -1,0 +1,5 @@
+*.o
+*.swp
+*.un~
+*.dSYM
+3d_interpolation
