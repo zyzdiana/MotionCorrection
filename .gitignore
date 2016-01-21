@@ -2,4 +2,6 @@
 *.swp
 *.un~
 *.dSYM
+test
+*.dat
 3d_interpolation

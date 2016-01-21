@@ -14,9 +14,11 @@ CXX = clang++
 LDFLAGS += -framework Accelerate
 endif
 
-all: 3d_interpolation
+all: 3d_interpolation test
 
 3d_interpolation:
+
+test: BinaryFile_tests.o
 
 clean:
 	rm -f *.o
