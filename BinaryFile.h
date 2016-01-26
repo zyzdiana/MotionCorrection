@@ -6,10 +6,10 @@
 #include <iostream>
 #include <fcntl.h>
 
-
 template <typename T>
 class BinaryFile{
   public:
+
     static int read(std::vector<T> *buffer, std::string filePath) {
         int inputFile = open(filePath.c_str(), O_RDONLY);
     
@@ -42,6 +42,7 @@ class BinaryFile{
 
         return bytesWritten;
     }
+
 };
 
 #endif

@@ -17,7 +17,7 @@ typedef vector<vector<vector<double> > > vector3D;
 typedef vector<vector<double> > vector2D;
 typedef vector<double> vector1D;
 
-#define PI 3.1415926535897932
+const double PI = 3.141592653589793238463;
 
 vector3D read_file(string filename) {
     //std::ifstream file_input("/Users/zyzdiana/Dropbox/THESIS/Oct_13_navs/8mm_iso_x_rot_3_0_to_5_0_deg_z_trans_rep_0_slice_0.dat",std::ios::binary);
