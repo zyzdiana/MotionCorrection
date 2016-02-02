@@ -11,6 +11,7 @@
 #include <string>
 
 using namespace std;
+static const int MAX_DERIVS_SIZE = 70*70*70;
 static const float PI = 3.141592653589793238463;
 static const int X_inv[64][64] ={
     { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -81,10 +82,8 @@ static const int X_inv[64][64] ={
 template <typename T>
 class Interpolation_3D{
   public:
-    typedef vector<vector<vector<vector<T> > > > vector4D;
-    typedef vector<vector<vector<T> > > vector3D;
-    typedef vector<vector<T> > vector2D;
     typedef vector<T> vector1D;
+    typedef vector<T*> pointer1D;
 
     static int clip(int input, int min, int max){
         if(input > max)
@@ -95,9 +94,8 @@ class Interpolation_3D{
             return input;
     }
 
-    static float trilinear_interp(vector3D volume, float x, float y, float z){
-        int shape = volume.size();
-
+    static float trilinear_interp(const vector1D *volume, const float x, const float y, const float z){
+        int shape = cbrt(volume->size());
         int x0 = int(floor(x));
         int x1 = x0 + 1;
         int y0 = int(floor(y));
@@ -118,11 +116,11 @@ class Interpolation_3D{
         float zd = z - z0;
 
         //set up for the bilinear interpolation
-        float C00 = volume[y0][x0][z0]*(1-xd) + volume[y0][x1][z0]*xd;
-        float C10 = volume[y1][x0][z0]*(1-xd) + volume[y1][x1][z0]*xd;
+        float C00 = volume->at(32*32*y0+32*x0+z0)*(1-xd) + volume->at(32*32*y0+32*x1+z0)*xd;
+        float C10 = volume->at(32*32*y1+32*x0+z0)*(1-xd) + volume->at(32*32*y1+32*x1+z0)*xd;
 
-        float C01 = volume[y0][x0][z1]*(1-xd) + volume[y0][x1][z1]*xd;
-        float C11 = volume[y1][x0][z1]*(1-xd) + volume[y1][x1][z1]*xd;
+        float C01 = volume->at(32*32*y0+32*x0+z1)*(1-xd) + volume->at(32*32*y0+32*x1+z1)*xd;
+        float C11 = volume->at(32*32*y1+32*x0+z1)*(1-xd) + volume->at(32*32*y1+32*x1+z1)*xd;
 
         float C0 = C00*(1-yd) + C10*yd;
         float C1 = C01*(1-yd) + C11*yd;
@@ -131,116 +129,129 @@ class Interpolation_3D{
         return C; 
     }
 
-    static vector1D X_inv_dot(vector1D Y){
-        vector1D result;
-        int shape = Y.size();
-        result.resize(shape);
-        for (int i=0; i<shape;++i){
+    // static T* X_inv_dot(const vector1D *Y){
+    //     T result[64];
+    //     int shape = Y->size();
+
+    //     for (int i = 0; i < shape; ++i){
+    //         float tmp = 0;
+    //         for (int j=0; j<shape; ++j){
+    //            tmp += X_inv[i][j]*Y->at(j);
+    //         }
+    //         result[i] = tmp;
+    //     }
+    //     return result;
+    // }
+
+    static T* X_inv_dot(const vector1D *Y, T result[64]){
+        int shape = Y->size();
+
+        for (int i = 0; i < shape; ++i){
             float tmp = 0;
             for (int j=0; j<shape; ++j){
-               tmp += X_inv[i][j]*Y[j];
+               tmp += X_inv[i][j]*Y->at(j);
             }
             result[i] = tmp;
         }
         return result;
     }
 
-    static float dot(vector1D Y, vector1D A){
-        int shape = Y.size();
-        float result = 0;
-        for (int i=0; i<shape;++i){
-            result += Y[i]*A[i];
+    static float dot(const vector1D *Y, const T* A){
+        int shape = Y->size();
+        float result = 0; 
+        for (int i = 0; i < shape; ++i){
+            result += Y->at(i) * (*(A+i));
         }
         return result;
     }
 
-    static vector1D get_target_Y(float x, float y, float z){
-        vector1D Y;
-        Y.resize(64);
-        Y[0] = 1.;
-        Y[1] = x;
-        Y[2] = x*x;
-        Y[3] = x*x*x;
-        Y[4] = y;
-        Y[5] = x*y;
-        Y[6] = x*x*y;
-        Y[7] = x*x*x*y;
-        Y[8] = y*y;
-        Y[9] = x*y*y;
-        Y[10] = x*x*y*y;
-        Y[11] = x*x*x*y*y;
-        Y[12] = y*y*y;
-        Y[13] = x*y*y*y;
-        Y[14] = x*x*y*y*y;
-        Y[15] = x*x*x*y*y*y;
+    static void get_target_Y(vector1D *Y, float x, float y, float z){
+        Y->at(0)= 1.;
+        Y->at(1)= x;
+        Y->at(2)= x*x;
+        Y->at(3)= x*x*x;
+        Y->at(4)= y;
+        Y->at(5)= x*y;
+        Y->at(6)= x*x*y;
+        Y->at(7)= x*x*x*y;
+        Y->at(8)= y*y;
+        Y->at(9)= x*y*y;
+        Y->at(10) = x*x*y*y;
+        Y->at(11) = x*x*x*y*y;
+        Y->at(12) = y*y*y;
+        Y->at(13) = x*y*y*y;
+        Y->at(14) = x*x*y*y*y;
+        Y->at(15) = x*x*x*y*y*y;
         
 
-        Y[16] = z;
-        Y[17] = x*z;
-        Y[18] = x*x*z;
-        Y[19] = x*x*x*z;
-        Y[20] = y*z;
-        Y[21] = x*y*z;
-        Y[22] = x*x*y*z;
-        Y[23] = x*x*x*y*z;
-        Y[24] = y*y*z;
-        Y[25] = x*y*y*z;
-        Y[26] = x*x*y*y*z;
-        Y[27] = x*x*x*y*y*z;
-        Y[28] = y*y*y*z;
-        Y[29] = x*y*y*y*z;
-        Y[30] = x*x*y*y*y*z;
-        Y[31] = x*x*x*y*y*y*z;
+        Y->at(16) = z;
+        Y->at(17) = x*z;
+        Y->at(18) = x*x*z;
+        Y->at(19) = x*x*x*z;
+        Y->at(20) = y*z;
+        Y->at(21) = x*y*z;
+        Y->at(22) = x*x*y*z;
+        Y->at(23) = x*x*x*y*z;
+        Y->at(24) = y*y*z;
+        Y->at(25) = x*y*y*z;
+        Y->at(26) = x*x*y*y*z;
+        Y->at(27) = x*x*x*y*y*z;
+        Y->at(28) = y*y*y*z;
+        Y->at(29) = x*y*y*y*z;
+        Y->at(30) = x*x*y*y*y*z;
+        Y->at(31) = x*x*x*y*y*y*z;
 
-        Y[32] = z*z;
-        Y[33] = x*z*z;
-        Y[34] = x*x*z*z;
-        Y[35] = x*x*x*z*z;
-        Y[36] = y*z*z;
-        Y[37] = x*y*z*z;
-        Y[38] = x*x*y*z*z;
-        Y[39] = x*x*x*y*z*z;
-        Y[40] = y*y*z*z;
-        Y[41] = x*y*y*z*z;
-        Y[42] = x*x*y*y*z*z;
-        Y[43] = x*x*x*y*y*z*z;
-        Y[44] = y*y*y*z*z;
-        Y[45] = x*y*y*y*z*z;
-        Y[46] = x*x*y*y*y*z*z;
-        Y[47] = x*x*x*y*y*y*z*z;
+        Y->at(32) = z*z;
+        Y->at(33) = x*z*z;
+        Y->at(34) = x*x*z*z;
+        Y->at(35) = x*x*x*z*z;
+        Y->at(36) = y*z*z;
+        Y->at(37) = x*y*z*z;
+        Y->at(38) = x*x*y*z*z;
+        Y->at(39) = x*x*x*y*z*z;
+        Y->at(40) = y*y*z*z;
+        Y->at(41) = x*y*y*z*z;
+        Y->at(42) = x*x*y*y*z*z;
+        Y->at(43) = x*x*x*y*y*z*z;
+        Y->at(44) = y*y*y*z*z;
+        Y->at(45) = x*y*y*y*z*z;
+        Y->at(46) = x*x*y*y*y*z*z;
+        Y->at(47) = x*x*x*y*y*y*z*z;
 
-        Y[48] = z*z*z;
-        Y[49] = x*z*z*z;
-        Y[50] = x*x*z*z*z;
-        Y[51] = x*x*x*z*z*z;
-        Y[52] = y*z*z*z;
-        Y[53] = x*y*z*z*z;
-        Y[54] = x*x*y*z*z*z;
-        Y[55] = x*x*x*y*z*z*z;
-        Y[56] = y*y*z*z*z;
-        Y[57] = x*y*y*z*z*z;
-        Y[58] = x*x*y*y*z*z*z;
-        Y[59] = x*x*x*y*y*z*z*z;
-        Y[60] = y*y*y*z*z*z;
-        Y[61] = x*y*y*y*z*z*z;
-        Y[62] = x*x*y*y*y*z*z*z;
-        Y[63] = x*x*x*y*y*y*z*z*z;
-        return Y;
+        Y->at(48) = z*z*z;
+        Y->at(49) = x*z*z*z;
+        Y->at(50) = x*x*z*z*z;
+        Y->at(51) = x*x*x*z*z*z;
+        Y->at(52) = y*z*z*z;
+        Y->at(53) = x*y*z*z*z;
+        Y->at(54) = x*x*y*z*z*z;
+        Y->at(55) = x*x*x*y*z*z*z;
+        Y->at(56) = y*y*z*z*z;
+        Y->at(57) = x*y*y*z*z*z;
+        Y->at(58) = x*x*y*y*z*z*z;
+        Y->at(59) = x*x*x*y*y*z*z*z;
+        Y->at(60) = y*y*y*z*z*z;
+        Y->at(61) = x*y*y*y*z*z*z;
+        Y->at(62) = x*x*y*y*y*z*z*z;
+        Y->at(63) = x*x*x*y*y*y*z*z*z;
     }
 
-    static vector4D tricubic_derivatives(vector3D volume){
-        int shape = volume.size();
-        vector4D derivatives;
-        derivatives.resize(shape+30);
-        for (int i = 0; i < shape+30; ++i) {
-            derivatives[i].resize(shape+30); 
-            for (int j = 0; j < shape+30; ++j){
-                derivatives[i][j].resize(shape+30);
-                for (int k = 0; k < shape+30; ++k)
-                    derivatives[i][j][k].resize(64);
-            }
-        }
+    static void tricubic_derivatives(const vector1D *volume, pointer1D *derivatives){
+        int shape = cbrt(volume->size());
+        int derives_shape = cbrt(derivatives->size());
 
+        //derivatives.resize(derives_shape*derives_shape*derives_shape);
+
+        // for (int i = 0; i < shape+30; ++i) {
+        //     derivatives[i.resize(shape+30); 
+        //     for (int j = 0; j < shape+30; ++j){
+        //         derivatives[i[j.resize(shape+30);
+        //         for (int k = 0; k < shape+30; ++k)
+        //             derivatives[i[j[k].resize(64);
+        //     }
+        // }
+        static T arrayCoeffs[MAX_DERIVS_SIZE][64];
+        vector1D Y(64);
         for(int i=-15; i<shape+15; ++i){
             for(int j=-15; j<shape+15; ++j){
                 for(int k=-15; k<shape+15; ++k){
@@ -275,121 +286,126 @@ class Interpolation_3D{
                     z3 = (z3 + shape) % shape;
 
                     //Compute vector Y from known points
-                    vector1D Y;
-                    Y.resize(64);
+                    
 
                     //values of f(x,y,z) at each corner.
-                    Y[0] = volume[y1][x1][z1];
-                    Y[1] = volume[y1][x1][z2];
-                    Y[2] = volume[y1][x2][z1];
-                    Y[3] = volume[y1][x2][z2];
-                    Y[4] = volume[y2][x1][z1];
-                    Y[5] = volume[y2][x1][z2];
-                    Y[6] = volume[y2][x2][z1];
-                    Y[7] = volume[y2][x2][z2];
+                    Y[0] = volume->at(shape*shape*y1 + shape*x1 + z1);
+                    Y[1] = volume->at(shape*shape*y1 + shape*x1 + z2);
+                    Y[2] = volume->at(shape*shape*y1 + shape*x2 + z1);
+                    Y[3] = volume->at(shape*shape*y1 + shape*x2 + z2);
+                    Y[4] = volume->at(shape*shape*y2 + shape*x1 + z1);
+                    Y[5] = volume->at(shape*shape*y2 + shape*x1 + z2);
+                    Y[6] = volume->at(shape*shape*y2 + shape*x2 + z1);
+                    Y[7] = volume->at(shape*shape*y2 + shape*x2 + z2);
 
                     //values of df/dx at each corner.
-                    Y[8] = ((volume[y1][x1][z2]-volume[y1][x1][z0])/2.);
-                    Y[9] = ((volume[y1][x1][z3]-volume[y1][x1][z1])/2.);
-                    Y[10] = ((volume[y1][x2][z2]-volume[y1][x2][z0])/2.);
-                    Y[11] = ((volume[y1][x2][z3]-volume[y1][x2][z1])/2.);
-                    Y[12] = ((volume[y2][x1][z2]-volume[y2][x1][z0])/2.);
-                    Y[13] = ((volume[y2][x1][z3]-volume[y2][x1][z1])/2.);
-                    Y[14] = ((volume[y2][x2][z2]-volume[y2][x2][z0])/2.);
-                    Y[15] = ((volume[y2][x2][z3]-volume[y2][x2][z1])/2.);
+                    Y[8] = ((volume->at(shape*shape*y1 + shape*x1 + z2)-volume->at(shape*shape*y1 + shape*x1 + z0))/2.);
+                    Y[9] = ((volume->at(shape*shape*y1 + shape*x1 + z3)-volume->at(shape*shape*y1 + shape*x1 + z1))/2.);
+                    Y[10] = ((volume->at(shape*shape*y1 + shape*x2 + z2)-volume->at(shape*shape*y1 + shape*x2 + z0))/2.);
+                    Y[11] = ((volume->at(shape*shape*y1 + shape*x2 + z3)-volume->at(shape*shape*y1 + shape*x2 + z1))/2.);
+                    Y[12] = ((volume->at(shape*shape*y2 + shape*x1 + z2)-volume->at(shape*shape*y2 + shape*x1 + z0))/2.);
+                    Y[13] = ((volume->at(shape*shape*y2 + shape*x1 + z3)-volume->at(shape*shape*y2 + shape*x1 + z1))/2.);
+                    Y[14] = ((volume->at(shape*shape*y2 + shape*x2 + z2)-volume->at(shape*shape*y2 + shape*x2 + z0))/2.);
+                    Y[15] = ((volume->at(shape*shape*y2 + shape*x2 + z3)-volume->at(shape*shape*y2 + shape*x2 + z1))/2.);
 
                     //values of df/dy at each corner.
-                    Y[16] = ((volume[y1][x2][z1]-volume[y1][x0][z1])/2.);
-                    Y[17] = ((volume[y1][x2][z2]-volume[y1][x0][z2])/2.);
-                    Y[18] = ((volume[y1][x3][z1]-volume[y1][x1][z1])/2.);
-                    Y[19] = ((volume[y1][x3][z2]-volume[y1][x1][z2])/2.);
-                    Y[20] = ((volume[y2][x2][z1]-volume[y2][x0][z1])/2.);
-                    Y[21] = ((volume[y2][x2][z2]-volume[y2][x0][z2])/2.);
-                    Y[22] = ((volume[y2][x3][z1]-volume[y2][x1][z1])/2.);
-                    Y[23] = ((volume[y2][x3][z2]-volume[y2][x1][z2])/2.);
+                    Y[16] = ((volume->at(shape*shape*y1 + shape*x2 + z1)-volume->at(shape*shape*y1 + shape*x0 + z1))/2.);
+                    Y[17] = ((volume->at(shape*shape*y1 + shape*x2 + z2)-volume->at(shape*shape*y1 + shape*x0 + z2))/2.);
+                    Y[18] = ((volume->at(shape*shape*y1 + shape*x3 + z1)-volume->at(shape*shape*y1 + shape*x1 + z1))/2.);
+                    Y[19] = ((volume->at(shape*shape*y1 + shape*x3 + z2)-volume->at(shape*shape*y1 + shape*x1 + z2))/2.);
+                    Y[20] = ((volume->at(shape*shape*y2 + shape*x2 + z1)-volume->at(shape*shape*y2 + shape*x0 + z1))/2.);
+                    Y[21] = ((volume->at(shape*shape*y2 + shape*x2 + z2)-volume->at(shape*shape*y2 + shape*x0 + z2))/2.);
+                    Y[22] = ((volume->at(shape*shape*y2 + shape*x3 + z1)-volume->at(shape*shape*y2 + shape*x1 + z1))/2.);
+                    Y[23] = ((volume->at(shape*shape*y2 + shape*x3 + z2)-volume->at(shape*shape*y2 + shape*x1 + z2))/2.);
 
                     //values of df/dz at each corner.
-                    Y[24] = ((volume[y2][x1][z1]-volume[y0][x1][z1])/2.);
-                    Y[25] = ((volume[y2][x1][z2]-volume[y0][x1][z2])/2.);
-                    Y[26] = ((volume[y2][x2][z1]-volume[y0][x2][z1])/2.);
-                    Y[27] = ((volume[y2][x2][z2]-volume[y0][x2][z2])/2.);
-                    Y[28] = ((volume[y3][x1][z1]-volume[y1][x1][z1])/2.);
-                    Y[29] = ((volume[y3][x1][z2]-volume[y1][x1][z2])/2.);
-                    Y[30] = ((volume[y3][x2][z1]-volume[y1][x2][z1])/2.);
-                    Y[31] = ((volume[y3][x2][z2]-volume[y1][x2][z2])/2.);
+                    Y[24] = ((volume->at(shape*shape*y2 + shape*x1 + z1)-volume->at(shape*shape*y0 + shape*x1 + z1))/2.);
+                    Y[25] = ((volume->at(shape*shape*y2 + shape*x1 + z2)-volume->at(shape*shape*y0 + shape*x1 + z2))/2.);
+                    Y[26] = ((volume->at(shape*shape*y2 + shape*x2 + z1)-volume->at(shape*shape*y0 + shape*x2 + z1))/2.);
+                    Y[27] = ((volume->at(shape*shape*y2 + shape*x2 + z2)-volume->at(shape*shape*y0 + shape*x2 + z2))/2.);
+                    Y[28] = ((volume->at(shape*shape*y3 + shape*x1 + z1)-volume->at(shape*shape*y1 + shape*x1 + z1))/2.);
+                    Y[29] = ((volume->at(shape*shape*y3 + shape*x1 + z2)-volume->at(shape*shape*y1 + shape*x1 + z2))/2.);
+                    Y[30] = ((volume->at(shape*shape*y3 + shape*x2 + z1)-volume->at(shape*shape*y1 + shape*x2 + z1))/2.);
+                    Y[31] = ((volume->at(shape*shape*y3 + shape*x2 + z2)-volume->at(shape*shape*y1 + shape*x2 + z2))/2.);
 
                     //values of d2f/dxdy at each corner.
-                    Y[32] = ((volume[y1][x2][z2]-volume[y1][x0][z2]-volume[y1][x2][z0]+volume[y1][x0][z0])/4.);
-                    Y[33] = ((volume[y1][x2][z3]-volume[y1][x0][z3]-volume[y1][x2][z1]+volume[y1][x0][z1])/4.);
-                    Y[34] = ((volume[y1][x3][z2]-volume[y1][x1][z2]-volume[y1][x3][z0]+volume[y1][x1][z0])/4.);
-                    Y[35] = ((volume[y1][x3][z3]-volume[y1][x1][z3]-volume[y1][x3][z1]+volume[y1][x1][z1])/4.);
-                    Y[36] = ((volume[y2][x2][z2]-volume[y2][x0][z2]-volume[y2][x2][z0]+volume[y2][x0][z0])/4.);
-                    Y[37] = ((volume[y2][x2][z3]-volume[y2][x0][z3]-volume[y2][x2][z1]+volume[y2][x0][z1])/4.);
-                    Y[38] = ((volume[y2][x3][z2]-volume[y2][x1][z2]-volume[y2][x3][z0]+volume[y2][x1][z0])/4.);
-                    Y[39] = ((volume[y2][x3][z3]-volume[y2][x1][z3]-volume[y2][x3][z1]+volume[y2][x1][z1])/4.);
+                    Y[32] = ((volume->at(shape*shape*y1 + shape*x2 + z2)-volume->at(shape*shape*y1 + shape*x0 + z2)-volume->at(shape*shape*y1 + shape*x2 + z0)+volume->at(shape*shape*y1 + shape*x0 + z0))/4.);
+                    Y[33] = ((volume->at(shape*shape*y1 + shape*x2 + z3)-volume->at(shape*shape*y1 + shape*x0 + z3)-volume->at(shape*shape*y1 + shape*x2 + z1)+volume->at(shape*shape*y1 + shape*x0 + z1))/4.);
+                    Y[34] = ((volume->at(shape*shape*y1 + shape*x3 + z2)-volume->at(shape*shape*y1 + shape*x1 + z2)-volume->at(shape*shape*y1 + shape*x3 + z0)+volume->at(shape*shape*y1 + shape*x1 + z0))/4.);
+                    Y[35] = ((volume->at(shape*shape*y1 + shape*x3 + z3)-volume->at(shape*shape*y1 + shape*x1 + z3)-volume->at(shape*shape*y1 + shape*x3 + z1)+volume->at(shape*shape*y1 + shape*x1 + z1))/4.);
+                    Y[36] = ((volume->at(shape*shape*y2 + shape*x2 + z2)-volume->at(shape*shape*y2 + shape*x0 + z2)-volume->at(shape*shape*y2 + shape*x2 + z0)+volume->at(shape*shape*y2 + shape*x0 + z0))/4.);
+                    Y[37] = ((volume->at(shape*shape*y2 + shape*x2 + z3)-volume->at(shape*shape*y2 + shape*x0 + z3)-volume->at(shape*shape*y2 + shape*x2 + z1)+volume->at(shape*shape*y2 + shape*x0 + z1))/4.);
+                    Y[38] = ((volume->at(shape*shape*y2 + shape*x3 + z2)-volume->at(shape*shape*y2 + shape*x1 + z2)-volume->at(shape*shape*y2 + shape*x3 + z0)+volume->at(shape*shape*y2 + shape*x1 + z0))/4.);
+                    Y[39] = ((volume->at(shape*shape*y2 + shape*x3 + z3)-volume->at(shape*shape*y2 + shape*x1 + z3)-volume->at(shape*shape*y2 + shape*x3 + z1)+volume->at(shape*shape*y2 + shape*x1 + z1))/4.);
 
                     //values of d2f/dxdz at each corner.
-                    Y[40] = ((volume[y2][x1][z2]-volume[y0][x1][z2]-volume[y2][x1][z0]+volume[y0][x1][z0])/4.);
-                    Y[41] = ((volume[y2][x1][z3]-volume[y0][x1][z3]-volume[y2][x1][z1]+volume[y0][x1][z1])/4.);
-                    Y[42] = ((volume[y2][x2][z2]-volume[y0][x2][z2]-volume[y2][x2][z0]+volume[y0][x2][z0])/4.);
-                    Y[43] = ((volume[y2][x2][z3]-volume[y0][x2][z3]-volume[y2][x2][z1]+volume[y0][x2][z1])/4.);
-                    Y[44] = ((volume[y3][x1][z2]-volume[y1][x1][z2]-volume[y3][x1][z0]+volume[y1][x1][z0])/4.);
-                    Y[45] = ((volume[y3][x1][z3]-volume[y1][x1][z3]-volume[y3][x1][z1]+volume[y1][x1][z1])/4.);
-                    Y[46] = ((volume[y3][x2][z2]-volume[y1][x2][z2]-volume[y3][x2][z0]+volume[y1][x2][z0])/4.);
-                    Y[47] = ((volume[y3][x2][z3]-volume[y1][x2][z3]-volume[y3][x2][z1]+volume[y1][x2][z1])/4.);
+                    Y[40] = ((volume->at(shape*shape*y2 + shape*x1 + z2)-volume->at(shape*shape*y0 + shape*x1 + z2)-volume->at(shape*shape*y2 + shape*x1 + z0)+volume->at(shape*shape*y0 + shape*x1 + z0))/4.);
+                    Y[41] = ((volume->at(shape*shape*y2 + shape*x1 + z3)-volume->at(shape*shape*y0 + shape*x1 + z3)-volume->at(shape*shape*y2 + shape*x1 + z1)+volume->at(shape*shape*y0 + shape*x1 + z1))/4.);
+                    Y[42] = ((volume->at(shape*shape*y2 + shape*x2 + z2)-volume->at(shape*shape*y0 + shape*x2 + z2)-volume->at(shape*shape*y2 + shape*x2 + z0)+volume->at(shape*shape*y0 + shape*x2 + z0))/4.);
+                    Y[43] = ((volume->at(shape*shape*y2 + shape*x2 + z3)-volume->at(shape*shape*y0 + shape*x2 + z3)-volume->at(shape*shape*y2 + shape*x2 + z1)+volume->at(shape*shape*y0 + shape*x2 + z1))/4.);
+                    Y[44] = ((volume->at(shape*shape*y3 + shape*x1 + z2)-volume->at(shape*shape*y1 + shape*x1 + z2)-volume->at(shape*shape*y3 + shape*x1 + z0)+volume->at(shape*shape*y1 + shape*x1 + z0))/4.);
+                    Y[45] = ((volume->at(shape*shape*y3 + shape*x1 + z3)-volume->at(shape*shape*y1 + shape*x1 + z3)-volume->at(shape*shape*y3 + shape*x1 + z1)+volume->at(shape*shape*y1 + shape*x1 + z1))/4.);
+                    Y[46] = ((volume->at(shape*shape*y3 + shape*x2 + z2)-volume->at(shape*shape*y1 + shape*x2 + z2)-volume->at(shape*shape*y3 + shape*x2 + z0)+volume->at(shape*shape*y1 + shape*x2 + z0))/4.);
+                    Y[47] = ((volume->at(shape*shape*y3 + shape*x2 + z3)-volume->at(shape*shape*y1 + shape*x2 + z3)-volume->at(shape*shape*y3 + shape*x2 + z1)+volume->at(shape*shape*y1 + shape*x2 + z1))/4.);
 
                     //values of d2f/dydz at each corner.
-                    Y[48] = ((volume[y2][x2][z1]-volume[y2][x0][z1]-volume[y0][x2][z1]+volume[y0][x0][z1])/4.);
-                    Y[49] = ((volume[y2][x2][z2]-volume[y2][x0][z2]-volume[y0][x2][z2]+volume[y0][x0][z2])/4.);
-                    Y[50] = ((volume[y2][x3][z1]-volume[y2][x1][z1]-volume[y0][x3][z1]+volume[y0][x1][z1])/4.);
-                    Y[51] = ((volume[y2][x3][z2]-volume[y2][x1][z2]-volume[y0][x3][z2]+volume[y0][x1][z2])/4.);
-                    Y[52] = ((volume[y3][x2][z1]-volume[y3][x0][z1]-volume[y1][x2][z1]+volume[y1][x0][z1])/4.);
-                    Y[53] = ((volume[y3][x2][z2]-volume[y3][x0][z2]-volume[y1][x2][z2]+volume[y1][x0][z2])/4.);
-                    Y[54] = ((volume[y3][x3][z1]-volume[y3][x1][z1]-volume[y1][x3][z1]+volume[y1][x1][z1])/4.);
-                    Y[55] = ((volume[y3][x3][z2]-volume[y3][x1][z2]-volume[y1][x3][z2]+volume[y1][x1][z2])/4.);
+                    Y[48] = ((volume->at(shape*shape*y2 + shape*x2 + z1)-volume->at(shape*shape*y2 + shape*x0 + z1)-volume->at(shape*shape*y0 + shape*x2 + z1)+volume->at(shape*shape*y0 + shape*x0 + z1))/4.);
+                    Y[49] = ((volume->at(shape*shape*y2 + shape*x2 + z2)-volume->at(shape*shape*y2 + shape*x0 + z2)-volume->at(shape*shape*y0 + shape*x2 + z2)+volume->at(shape*shape*y0 + shape*x0 + z2))/4.);
+                    Y[50] = ((volume->at(shape*shape*y2 + shape*x3 + z1)-volume->at(shape*shape*y2 + shape*x1 + z1)-volume->at(shape*shape*y0 + shape*x3 + z1)+volume->at(shape*shape*y0 + shape*x1 + z1))/4.);
+                    Y[51] = ((volume->at(shape*shape*y2 + shape*x3 + z2)-volume->at(shape*shape*y2 + shape*x1 + z2)-volume->at(shape*shape*y0 + shape*x3 + z2)+volume->at(shape*shape*y0 + shape*x1 + z2))/4.);
+                    Y[52] = ((volume->at(shape*shape*y3 + shape*x2 + z1)-volume->at(shape*shape*y3 + shape*x0 + z1)-volume->at(shape*shape*y1 + shape*x2 + z1)+volume->at(shape*shape*y1 + shape*x0 + z1))/4.);
+                    Y[53] = ((volume->at(shape*shape*y3 + shape*x2 + z2)-volume->at(shape*shape*y3 + shape*x0 + z2)-volume->at(shape*shape*y1 + shape*x2 + z2)+volume->at(shape*shape*y1 + shape*x0 + z2))/4.);
+                    Y[54] = ((volume->at(shape*shape*y3 + shape*x3 + z1)-volume->at(shape*shape*y3 + shape*x1 + z1)-volume->at(shape*shape*y1 + shape*x3 + z1)+volume->at(shape*shape*y1 + shape*x1 + z1))/4.);
+                    Y[55] = ((volume->at(shape*shape*y3 + shape*x3 + z2)-volume->at(shape*shape*y3 + shape*x1 + z2)-volume->at(shape*shape*y1 + shape*x3 + z2)+volume->at(shape*shape*y1 + shape*x1 + z2))/4.);
 
                     //values of d3f/dxdydz at each corner.
-                    Y[56] = ((volume[y2][x2][z2]-volume[y2][x0][z2]-volume[y2][x2][z0]+volume[y2][x0][z0])
-                              -(volume[y0][x2][z2]-volume[y0][x0][z2]-volume[y0][x2][z0]+volume[y0][x0][z0]))/8.;
-                    Y[57] = ((volume[y2][x2][z3]-volume[y2][x0][z3]-volume[y2][x2][z1]+volume[y2][x0][z1])
-                              -(volume[y0][x2][z3]-volume[y0][x0][z3]-volume[y0][x2][z1]+volume[y0][x0][z1]))/8.;
-                    Y[58] = ((volume[y2][x3][z2]-volume[y2][x1][z2]-volume[y2][x3][z0]+volume[y2][x1][z0])
-                              -(volume[y0][x3][z2]-volume[y0][x1][z2]-volume[y0][x3][z0]+volume[y0][x1][z0]))/8.;
-                    Y[59] = ((volume[y2][x3][z3]-volume[y2][x1][z3]-volume[y2][x3][z1]+volume[y2][x1][z1])
-                              -(volume[y0][x3][z3]-volume[y0][x1][z3]-volume[y0][x3][z1]+volume[y0][x1][z1]))/8.;
+                    Y[56] = ((volume->at(shape*shape*y2 + shape*x2 + z2)-volume->at(shape*shape*y2 + shape*x0 + z2)-volume->at(shape*shape*y2 + shape*x2 + z0)+volume->at(shape*shape*y2 + shape*x0 + z0))
+                              -(volume->at(shape*shape*y0 + shape*x2 + z2)-volume->at(shape*shape*y0 + shape*x0 + z2)-volume->at(shape*shape*y0 + shape*x2 + z0)+volume->at(shape*shape*y0 + shape*x0 + z0)))/8.;
+                    Y[57] = ((volume->at(shape*shape*y2 + shape*x2 + z3)-volume->at(shape*shape*y2 + shape*x0 + z3)-volume->at(shape*shape*y2 + shape*x2 + z1)+volume->at(shape*shape*y2 + shape*x0 + z1))
+                              -(volume->at(shape*shape*y0 + shape*x2 + z3)-volume->at(shape*shape*y0 + shape*x0 + z3)-volume->at(shape*shape*y0 + shape*x2 + z1)+volume->at(shape*shape*y0 + shape*x0 + z1)))/8.;
+                    Y[58] = ((volume->at(shape*shape*y2 + shape*x3 + z2)-volume->at(shape*shape*y2 + shape*x1 + z2)-volume->at(shape*shape*y2 + shape*x3 + z0)+volume->at(shape*shape*y2 + shape*x1 + z0))
+                              -(volume->at(shape*shape*y0 + shape*x3 + z2)-volume->at(shape*shape*y0 + shape*x1 + z2)-volume->at(shape*shape*y0 + shape*x3 + z0)+volume->at(shape*shape*y0 + shape*x1 + z0)))/8.;
+                    Y[59] = ((volume->at(shape*shape*y2 + shape*x3 + z3)-volume->at(shape*shape*y2 + shape*x1 + z3)-volume->at(shape*shape*y2 + shape*x3 + z1)+volume->at(shape*shape*y2 + shape*x1 + z1))
+                              -(volume->at(shape*shape*y0 + shape*x3 + z3)-volume->at(shape*shape*y0 + shape*x1 + z3)-volume->at(shape*shape*y0 + shape*x3 + z1)+volume->at(shape*shape*y0 + shape*x1 + z1)))/8.;
 
-                    Y[60] = ((volume[y3][x2][z2]-volume[y3][x0][z2]-volume[y3][x2][z0]+volume[y3][x0][z0])
-                              -(volume[y1][x2][z2]-volume[y1][x0][z2]-volume[y1][x2][z0]+volume[y1][x0][z0]))/8.;
-                    Y[61] = ((volume[y3][x2][z3]-volume[y3][x0][z3]-volume[y3][x2][z1]+volume[y3][x0][z1])
-                              -(volume[y1][x2][z3]-volume[y1][x0][z3]-volume[y1][x2][z1]+volume[y1][x0][z1]))/8.;
-                    Y[62] = ((volume[y3][x3][z2]-volume[y3][x1][z2]-volume[y3][x3][z0]+volume[y3][x1][z0])
-                              -(volume[y1][x3][z2]-volume[y1][x1][z2]-volume[y1][x3][z0]+volume[y1][x1][z0]))/8.;
-                    Y[63] = ((volume[y3][x3][z3]-volume[y3][x1][z3]-volume[y3][x3][z1]+volume[y3][x1][z1])
-                              -(volume[y1][x3][z3]-volume[y1][x1][z3]-volume[y1][x3][z1]+volume[y1][x1][z1]))/8.;
+                    Y[60] = ((volume->at(shape*shape*y3 + shape*x2 + z2)-volume->at(shape*shape*y3 + shape*x0 + z2)-volume->at(shape*shape*y3 + shape*x2 + z0)+volume->at(shape*shape*y3 + shape*x0 + z0))
+                              -(volume->at(shape*shape*y1 + shape*x2 + z2)-volume->at(shape*shape*y1 + shape*x0 + z2)-volume->at(shape*shape*y1 + shape*x2 + z0)+volume->at(shape*shape*y1 + shape*x0 + z0)))/8.;
+                    Y[61] = ((volume->at(shape*shape*y3 + shape*x2 + z3)-volume->at(shape*shape*y3 + shape*x0 + z3)-volume->at(shape*shape*y3 + shape*x2 + z1)+volume->at(shape*shape*y3 + shape*x0 + z1))
+                              -(volume->at(shape*shape*y1 + shape*x2 + z3)-volume->at(shape*shape*y1 + shape*x0 + z3)-volume->at(shape*shape*y1 + shape*x2 + z1)+volume->at(shape*shape*y1 + shape*x0 + z1)))/8.;
+                    Y[62] = ((volume->at(shape*shape*y3 + shape*x3 + z2)-volume->at(shape*shape*y3 + shape*x1 + z2)-volume->at(shape*shape*y3 + shape*x3 + z0)+volume->at(shape*shape*y3 + shape*x1 + z0))
+                              -(volume->at(shape*shape*y1 + shape*x3 + z2)-volume->at(shape*shape*y1 + shape*x1 + z2)-volume->at(shape*shape*y1 + shape*x3 + z0)+volume->at(shape*shape*y1 + shape*x1 + z0)))/8.;
+                    Y[63] = ((volume->at(shape*shape*y3 + shape*x3 + z3)-volume->at(shape*shape*y3 + shape*x1 + z3)-volume->at(shape*shape*y3 + shape*x3 + z1)+volume->at(shape*shape*y3 + shape*x1 + z1))
+                              -(volume->at(shape*shape*y1 + shape*x3 + z3)-volume->at(shape*shape*y1 + shape*x1 + z3)-volume->at(shape*shape*y1 + shape*x3 + z1)+volume->at(shape*shape*y1 + shape*x1 + z1)))/8.;
+                    //derivatives[j+15][i+15][k+15] = X_inv_dot(Y);
+                    //static T coeffs[64];
+                    int idx = derives_shape*derives_shape*(j+15) + derives_shape*(i+15) + (k+15);
+                    //cout << arrayCoeffs[idx] << " ";
+                    derivatives->at(idx) = X_inv_dot(&Y, arrayCoeffs[idx]);
+                    //T* p = derivatives->at(derives_shape*derives_shape*(j+15) + derives_shape*(i+15) + (k+15));
+                    //cout << coeffs[1] << " " << *(p+1) << endl;
+                    //cout << coeffs[0] << " " << *(derivatives->at(derives_shape*derives_shape*(j+15) + derives_shape*(i+15) + (k+15)))<< endl;
 
-                    derivatives[j+15][i+15][k+15] = X_inv_dot(Y);
                 }
             }
         }
-        return derivatives;
     }
 
-    static float tricubic_interp(vector4D derivatives, float x, float y, float z){
-
+    static float tricubic_interp(const pointer1D *derivatives, const float x, const float y, const float z){
+        int derives_shape = cbrt(derivatives->size());
         int x1 = int(floor(x));
         int y1 = int(floor(y));
         int z1 = int(floor(z));
 
-        vector1D A = derivatives[y1+15][x1+15][z1+15];
-        vector1D target_Y = get_target_Y(y-y1, x-x1, z-z1);
-        return dot(target_Y,A);
+        vector1D target_Y(64);
+        get_target_Y(&target_Y, y-y1, x-x1, z-z1);
+        return dot(&target_Y, derivatives->at(derives_shape*derives_shape*(y1+15) + derives_shape*(x1+15) + (z1+15)) );
     }
 
     static float to_radian(float angle){
         return angle*PI/180.0;
     }
 
-    static vector1D rotate_coords_3d(float x, float y, float z, float theta, float wx, float wy, float wz, float ox, float oy, float oz){
+    static void rotate_coords_3d(vector1D *result, float x, float y, float z, float theta, float wx, float wy, float wz, float ox, float oy, float oz){
         theta = to_radian(theta);
         // make sure w is a unit vetor:
         float tmp = wx*wx + wy*wy + wz*wz;
@@ -399,52 +415,57 @@ class Interpolation_3D{
             wy = wy/norm;
             wz = wz/norm;
         }
+
         float s = sin(theta);
         float c = cos(theta);
         x = x - ox;
         y = y - oy;
         z = z - oz;
 
-        vector1D result(3);
         //result.resize(3);
-        result[0] = c*x+s*(wy*z-wz*y)+(1-c)*(wx*x+wy*y+wz*z)*wx + ox;
-        result[1] = c*y+s*(wz*x-wx*z)+(1-c)*(wx*x+wy*y+wz*z)*wy + oy;
-        result[2] = c*z+s*(wx*y-wy*x)+(1-c)*(wx*x+wy*y+wz*z)*wz + oz;
-        return result;
+        result->at(0) = c*x+s*(wy*z-wz*y)+(1-c)*(wx*x+wy*y+wz*z)*wx + ox;
+        result->at(1) = c*y+s*(wz*x-wx*z)+(1-c)*(wx*x+wy*y+wz*z)*wy + oy;
+        result->at(2) = c*z+s*(wx*y-wy*x)+(1-c)*(wx*x+wy*y+wz*z)*wz + oz;
     }
-    static vector3D rotate_volume_trilinear(vector3D volume, float theta, float wx, float wy, float wz){
-       float shape = float(volume.size());
-       vector3D dest(shape, vector2D(shape, vector1D(shape)));
+    static vector1D rotate_volume_trilinear(const vector1D *volume, float theta, float wx, float wy, float wz){
+       float shape = float( cbrt(volume->size()) );
+       vector1D dest(shape*shape*shape);
         //find center of the volume
         float ox = (shape-1)/2;
         float oy = (shape-1)/2;
         float oz = (shape-1)/2;
-
+        vector1D dest_coords(3);
         for(int i = 0; i < shape; ++i){
             for(int j = 0; j < shape; ++j){
                 for(int k = 0; k < shape; ++k){
-                    vector1D dest_coords = rotate_coords_3d(i, j, k, theta, wx, wy, wz, ox, oy, oz);
-                    dest[i][j][k] = trilinear_interp(volume,dest_coords[1],dest_coords[0],dest_coords[2]);
+                    rotate_coords_3d(&dest_coords, i, j, k, theta, wx, wy, wz, ox, oy, oz);
+                    dest[shape*shape*i+shape*j+k] = trilinear_interp(volume,dest_coords[0],dest_coords[1],dest_coords[2]);
                 }
             }
         }
         return dest;
     }
 
-    static vector3D rotate_volume_tricubic(vector3D volume, float theta, float wx, float wy, float wz){
-       float shape = float(volume.size());
-       vector3D dest(shape, vector2D(shape, vector1D(shape)));
+    static vector1D rotate_volume_tricubic(const vector1D *volume, float theta, float wx, float wy, float wz){
+        float shape = cbrt(volume->size());
+        vector1D dest(shape*shape*shape);
+
+        int derivs_shape = shape+30;
+        pointer1D derivs(derivs_shape*derivs_shape*derivs_shape);
+        tricubic_derivatives(volume, &derivs);
+
         //find center of the volume
-        float ox = (shape-1)/2;
-        float oy = (shape-1)/2;
-        float oz = (shape-1)/2;
-        vector4D derivs = tricubic_derivatives(volume);
+        float ox = (float(shape)-1)/2;
+        float oy = (float(shape)-1)/2;
+        float oz = (float(shape)-1)/2;
+
+        vector1D dest_coords(3);
         for(int i = 0; i < shape; ++i){
             for(int j = 0; j < shape; ++j){
                 for(int k = 0; k < shape; ++k){
-                    vector1D dest_coords = rotate_coords_3d(i, j, k, theta, wx, wy, wz, ox, oy, oz);
-                    cout << i << "," << j << "," << k << endl; 
-                    dest[i][j][k] = tricubic_interp(derivs,dest_coords[1],dest_coords[0],dest_coords[2]);
+                    rotate_coords_3d(&dest_coords, i, j, k, theta, wx, wy, wz, ox, oy, oz);
+                    //cout << i << "," << j << "," << k << endl; 
+                    dest[shape*shape*i+shape*j+k] = tricubic_interp(&derivs,dest_coords[0],dest_coords[1],dest_coords[2]);
                 }
             }
         }
