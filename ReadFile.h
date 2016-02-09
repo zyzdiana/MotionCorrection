@@ -38,9 +38,7 @@ class ReadFile{
 
     static vector1D read_reference_volume(string path, int size){
       vector1D volume(size);
-      ifstream file_input(path,std::ios::binary);
-      copy(istream_iterator<T>(file_input), istream_iterator<T>(), back_inserter(volume));
-      file_input.close();
+      int bytesRead = BinaryFile<T>::read(&volume, path);
       return volume;
   }
 

@@ -14,7 +14,7 @@ CXX = clang++
 LDFLAGS += -framework Accelerate
 endif
 
-all: test test_read_file test_interp test_time_profiler
+all: test test_read_file test_interp test_time_profiler test_rotate_coords
 
 test_read_file:
 

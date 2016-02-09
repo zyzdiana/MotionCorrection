@@ -23,13 +23,13 @@ int main(){
     //     cout << " " << *it_x; 
     // }
 
-    string path1 = "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/testVol11111.dat";
-    vector1D vol1_ref = ReadFile<float>::read_reference_volume(path1, 32*32*32);  
+    string path1 = "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/testVol1.dat";
+    vector1D vol1_ref = ReadFile<float>::read_reference_volume(path1, 32*32*32);
+      
     for (int i = 0; i < vol1_ref.size(); ++i){
-        // if (vol1[i] != vol1_ref[i]){
-        //     cout << i << endl;
-        // }
-        cout << vol1_ref[i]<< " ";
+        if (vol1[i] != vol1_ref[i]){
+            cout << i << endl;
+        }
     }
     cout << endl;
     return 0;

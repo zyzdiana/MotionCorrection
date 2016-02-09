@@ -11,6 +11,8 @@
 #include <string>
 
 using namespace std;
+
+// MAX_DERIVS_SIZE is used to allocate a 2D array to store derivatives
 static const int MAX_DERIVS_SIZE = 70*70*70;
 static const float PI = 3.141592653589793238463;
 static const int X_inv[64][64] ={
@@ -79,11 +81,12 @@ static const int X_inv[64][64] ={
     {-12,12,12,-12,12,-12,-12,12,-8,-4, 8, 4, 8, 4,-8,-4,-6, 6,-6, 6, 6,-6, 6,-6,-6, 6, 6,-6,-6, 6, 6,-6,-4,-2,-4,-2, 4, 2, 4, 2,-4,-2, 4, 2,-4,-2, 4, 2,-3, 3,-3, 3,-3, 3,-3, 3,-2,-1,-2,-1,-2,-1,-2,-1},
     { 8,-8,-8, 8,-8, 8, 8,-8, 4, 4,-4,-4,-4,-4, 4, 4, 4,-4, 4,-4,-4, 4,-4, 4, 4,-4,-4, 4, 4,-4,-4, 4, 2, 2, 2, 2,-2,-2,-2,-2, 2, 2,-2,-2, 2, 2,-2,-2, 2,-2, 2,-2, 2,-2, 2,-2, 1, 1, 1, 1, 1, 1, 1, 1}
 };
+
 template <typename T>
 class Interpolation_3D{
   public:
     typedef vector<T> vector1D;
-    typedef vector<T*> pointer1D;
+    typedef vector<T*> pointer1D; //vector of pointers for storing the coefficients.
 
     static int clip(int input, int min, int max){
         if(input > max)
@@ -95,7 +98,9 @@ class Interpolation_3D{
     }
 
     static float trilinear_interp(const vector1D *volume, const float x, const float y, const float z){
+        // get the shape from input volume
         int shape = cbrt(volume->size());
+
         int x0 = int(floor(x));
         int x1 = x0 + 1;
         int y0 = int(floor(y));
@@ -103,6 +108,7 @@ class Interpolation_3D{
         int z0 = int(floor(z));
         int z1 = z0 + 1;
 
+        // clip range
         x0 = clip(x0, 0, shape-1);
         x1 = clip(x1, 0, shape-1);
         y0 = clip(y0, 0, shape-1);
@@ -126,24 +132,13 @@ class Interpolation_3D{
         float C1 = C01*(1-yd) + C11*yd;
         
         float C = C0*(1-zd) + C1*zd;
+
+        // return result
         return C; 
     }
 
-    // static T* X_inv_dot(const vector1D *Y){
-    //     T result[64];
-    //     int shape = Y->size();
-
-    //     for (int i = 0; i < shape; ++i){
-    //         float tmp = 0;
-    //         for (int j=0; j<shape; ++j){
-    //            tmp += X_inv[i][j]*Y->at(j);
-    //         }
-    //         result[i] = tmp;
-    //     }
-    //     return result;
-    // }
-
-    static T* X_inv_dot(const vector1D *Y, T result[64]){
+    // Function for computing the dot product of the inverse matrix with a vector Y
+    static T* X_inv_dot(const vector1D *Y, T coeffs[64]){
         int shape = Y->size();
 
         for (int i = 0; i < shape; ++i){
@@ -151,11 +146,12 @@ class Interpolation_3D{
             for (int j=0; j<shape; ++j){
                tmp += X_inv[i][j]*Y->at(j);
             }
-            result[i] = tmp;
+            coeffs[i] = tmp;
         }
-        return result;
+        return coeffs;
     }
 
+    // Function for computing the dot product of two vectors Y.dot(A)
     static float dot(const vector1D *Y, const T* A){
         int shape = Y->size();
         float result = 0; 
@@ -165,7 +161,7 @@ class Interpolation_3D{
         return result;
     }
 
-    static void get_target_Y(vector1D *Y, float x, float y, float z){
+    static void get_target_Y(vector1D *Y, float z, float y, float x){
         Y->at(0)= 1.;
         Y->at(1)= x;
         Y->at(2)= x*x;
@@ -237,21 +233,16 @@ class Interpolation_3D{
     }
 
     static void tricubic_derivatives(const vector1D *volume, pointer1D *derivatives){
+        // get shape of the volume and derivatives
         int shape = cbrt(volume->size());
         int derives_shape = cbrt(derivatives->size());
 
-        //derivatives.resize(derives_shape*derives_shape*derives_shape);
-
-        // for (int i = 0; i < shape+30; ++i) {
-        //     derivatives[i.resize(shape+30); 
-        //     for (int j = 0; j < shape+30; ++j){
-        //         derivatives[i[j.resize(shape+30);
-        //         for (int k = 0; k < shape+30; ++k)
-        //             derivatives[i[j[k].resize(64);
-        //     }
-        // }
+        // allocate this big static array to store all the coefficients
         static T arrayCoeffs[MAX_DERIVS_SIZE][64];
+
+        // a vector used to temporary store the polynomials of x, y, and z 
         vector1D Y(64);
+
         for(int i=-15; i<shape+15; ++i){
             for(int j=-15; j<shape+15; ++j){
                 for(int k=-15; k<shape+15; ++k){
@@ -283,10 +274,7 @@ class Interpolation_3D{
                     z0 = (z0 + shape) % shape;
                     z1 = (z1 + shape) % shape;
                     z2 = (z2 + shape) % shape;
-                    z3 = (z3 + shape) % shape;
-
-                    //Compute vector Y from known points
-                    
+                    z3 = (z3 + shape) % shape;                    
 
                     //values of f(x,y,z) at each corner.
                     Y[0] = volume->at(shape*shape*y1 + shape*x1 + z1);
@@ -298,7 +286,7 @@ class Interpolation_3D{
                     Y[6] = volume->at(shape*shape*y2 + shape*x2 + z1);
                     Y[7] = volume->at(shape*shape*y2 + shape*x2 + z2);
 
-                    //values of df/dx at each corner.
+                    //values of df/dx
                     Y[8] = ((volume->at(shape*shape*y1 + shape*x1 + z2)-volume->at(shape*shape*y1 + shape*x1 + z0))/2.);
                     Y[9] = ((volume->at(shape*shape*y1 + shape*x1 + z3)-volume->at(shape*shape*y1 + shape*x1 + z1))/2.);
                     Y[10] = ((volume->at(shape*shape*y1 + shape*x2 + z2)-volume->at(shape*shape*y1 + shape*x2 + z0))/2.);
@@ -308,7 +296,7 @@ class Interpolation_3D{
                     Y[14] = ((volume->at(shape*shape*y2 + shape*x2 + z2)-volume->at(shape*shape*y2 + shape*x2 + z0))/2.);
                     Y[15] = ((volume->at(shape*shape*y2 + shape*x2 + z3)-volume->at(shape*shape*y2 + shape*x2 + z1))/2.);
 
-                    //values of df/dy at each corner.
+                    //values of df/dy
                     Y[16] = ((volume->at(shape*shape*y1 + shape*x2 + z1)-volume->at(shape*shape*y1 + shape*x0 + z1))/2.);
                     Y[17] = ((volume->at(shape*shape*y1 + shape*x2 + z2)-volume->at(shape*shape*y1 + shape*x0 + z2))/2.);
                     Y[18] = ((volume->at(shape*shape*y1 + shape*x3 + z1)-volume->at(shape*shape*y1 + shape*x1 + z1))/2.);
@@ -318,7 +306,7 @@ class Interpolation_3D{
                     Y[22] = ((volume->at(shape*shape*y2 + shape*x3 + z1)-volume->at(shape*shape*y2 + shape*x1 + z1))/2.);
                     Y[23] = ((volume->at(shape*shape*y2 + shape*x3 + z2)-volume->at(shape*shape*y2 + shape*x1 + z2))/2.);
 
-                    //values of df/dz at each corner.
+                    //values of df/dz
                     Y[24] = ((volume->at(shape*shape*y2 + shape*x1 + z1)-volume->at(shape*shape*y0 + shape*x1 + z1))/2.);
                     Y[25] = ((volume->at(shape*shape*y2 + shape*x1 + z2)-volume->at(shape*shape*y0 + shape*x1 + z2))/2.);
                     Y[26] = ((volume->at(shape*shape*y2 + shape*x2 + z1)-volume->at(shape*shape*y0 + shape*x2 + z1))/2.);
@@ -328,7 +316,7 @@ class Interpolation_3D{
                     Y[30] = ((volume->at(shape*shape*y3 + shape*x2 + z1)-volume->at(shape*shape*y1 + shape*x2 + z1))/2.);
                     Y[31] = ((volume->at(shape*shape*y3 + shape*x2 + z2)-volume->at(shape*shape*y1 + shape*x2 + z2))/2.);
 
-                    //values of d2f/dxdy at each corner.
+                    //values of d2f/dxdy
                     Y[32] = ((volume->at(shape*shape*y1 + shape*x2 + z2)-volume->at(shape*shape*y1 + shape*x0 + z2)-volume->at(shape*shape*y1 + shape*x2 + z0)+volume->at(shape*shape*y1 + shape*x0 + z0))/4.);
                     Y[33] = ((volume->at(shape*shape*y1 + shape*x2 + z3)-volume->at(shape*shape*y1 + shape*x0 + z3)-volume->at(shape*shape*y1 + shape*x2 + z1)+volume->at(shape*shape*y1 + shape*x0 + z1))/4.);
                     Y[34] = ((volume->at(shape*shape*y1 + shape*x3 + z2)-volume->at(shape*shape*y1 + shape*x1 + z2)-volume->at(shape*shape*y1 + shape*x3 + z0)+volume->at(shape*shape*y1 + shape*x1 + z0))/4.);
@@ -338,7 +326,7 @@ class Interpolation_3D{
                     Y[38] = ((volume->at(shape*shape*y2 + shape*x3 + z2)-volume->at(shape*shape*y2 + shape*x1 + z2)-volume->at(shape*shape*y2 + shape*x3 + z0)+volume->at(shape*shape*y2 + shape*x1 + z0))/4.);
                     Y[39] = ((volume->at(shape*shape*y2 + shape*x3 + z3)-volume->at(shape*shape*y2 + shape*x1 + z3)-volume->at(shape*shape*y2 + shape*x3 + z1)+volume->at(shape*shape*y2 + shape*x1 + z1))/4.);
 
-                    //values of d2f/dxdz at each corner.
+                    //values of d2f/dxdz
                     Y[40] = ((volume->at(shape*shape*y2 + shape*x1 + z2)-volume->at(shape*shape*y0 + shape*x1 + z2)-volume->at(shape*shape*y2 + shape*x1 + z0)+volume->at(shape*shape*y0 + shape*x1 + z0))/4.);
                     Y[41] = ((volume->at(shape*shape*y2 + shape*x1 + z3)-volume->at(shape*shape*y0 + shape*x1 + z3)-volume->at(shape*shape*y2 + shape*x1 + z1)+volume->at(shape*shape*y0 + shape*x1 + z1))/4.);
                     Y[42] = ((volume->at(shape*shape*y2 + shape*x2 + z2)-volume->at(shape*shape*y0 + shape*x2 + z2)-volume->at(shape*shape*y2 + shape*x2 + z0)+volume->at(shape*shape*y0 + shape*x2 + z0))/4.);
@@ -348,7 +336,7 @@ class Interpolation_3D{
                     Y[46] = ((volume->at(shape*shape*y3 + shape*x2 + z2)-volume->at(shape*shape*y1 + shape*x2 + z2)-volume->at(shape*shape*y3 + shape*x2 + z0)+volume->at(shape*shape*y1 + shape*x2 + z0))/4.);
                     Y[47] = ((volume->at(shape*shape*y3 + shape*x2 + z3)-volume->at(shape*shape*y1 + shape*x2 + z3)-volume->at(shape*shape*y3 + shape*x2 + z1)+volume->at(shape*shape*y1 + shape*x2 + z1))/4.);
 
-                    //values of d2f/dydz at each corner.
+                    //values of d2f/dydz
                     Y[48] = ((volume->at(shape*shape*y2 + shape*x2 + z1)-volume->at(shape*shape*y2 + shape*x0 + z1)-volume->at(shape*shape*y0 + shape*x2 + z1)+volume->at(shape*shape*y0 + shape*x0 + z1))/4.);
                     Y[49] = ((volume->at(shape*shape*y2 + shape*x2 + z2)-volume->at(shape*shape*y2 + shape*x0 + z2)-volume->at(shape*shape*y0 + shape*x2 + z2)+volume->at(shape*shape*y0 + shape*x0 + z2))/4.);
                     Y[50] = ((volume->at(shape*shape*y2 + shape*x3 + z1)-volume->at(shape*shape*y2 + shape*x1 + z1)-volume->at(shape*shape*y0 + shape*x3 + z1)+volume->at(shape*shape*y0 + shape*x1 + z1))/4.);
@@ -358,7 +346,7 @@ class Interpolation_3D{
                     Y[54] = ((volume->at(shape*shape*y3 + shape*x3 + z1)-volume->at(shape*shape*y3 + shape*x1 + z1)-volume->at(shape*shape*y1 + shape*x3 + z1)+volume->at(shape*shape*y1 + shape*x1 + z1))/4.);
                     Y[55] = ((volume->at(shape*shape*y3 + shape*x3 + z2)-volume->at(shape*shape*y3 + shape*x1 + z2)-volume->at(shape*shape*y1 + shape*x3 + z2)+volume->at(shape*shape*y1 + shape*x1 + z2))/4.);
 
-                    //values of d3f/dxdydz at each corner.
+                    //values of d3f/dxdydz
                     Y[56] = ((volume->at(shape*shape*y2 + shape*x2 + z2)-volume->at(shape*shape*y2 + shape*x0 + z2)-volume->at(shape*shape*y2 + shape*x2 + z0)+volume->at(shape*shape*y2 + shape*x0 + z0))
                               -(volume->at(shape*shape*y0 + shape*x2 + z2)-volume->at(shape*shape*y0 + shape*x0 + z2)-volume->at(shape*shape*y0 + shape*x2 + z0)+volume->at(shape*shape*y0 + shape*x0 + z0)))/8.;
                     Y[57] = ((volume->at(shape*shape*y2 + shape*x2 + z3)-volume->at(shape*shape*y2 + shape*x0 + z3)-volume->at(shape*shape*y2 + shape*x2 + z1)+volume->at(shape*shape*y2 + shape*x0 + z1))
@@ -376,15 +364,12 @@ class Interpolation_3D{
                               -(volume->at(shape*shape*y1 + shape*x3 + z2)-volume->at(shape*shape*y1 + shape*x1 + z2)-volume->at(shape*shape*y1 + shape*x3 + z0)+volume->at(shape*shape*y1 + shape*x1 + z0)))/8.;
                     Y[63] = ((volume->at(shape*shape*y3 + shape*x3 + z3)-volume->at(shape*shape*y3 + shape*x1 + z3)-volume->at(shape*shape*y3 + shape*x3 + z1)+volume->at(shape*shape*y3 + shape*x1 + z1))
                               -(volume->at(shape*shape*y1 + shape*x3 + z3)-volume->at(shape*shape*y1 + shape*x1 + z3)-volume->at(shape*shape*y1 + shape*x3 + z1)+volume->at(shape*shape*y1 + shape*x1 + z1)))/8.;
-                    //derivatives[j+15][i+15][k+15] = X_inv_dot(Y);
-                    //static T coeffs[64];
-                    int idx = derives_shape*derives_shape*(j+15) + derives_shape*(i+15) + (k+15);
-                    //cout << arrayCoeffs[idx] << " ";
-                    derivatives->at(idx) = X_inv_dot(&Y, arrayCoeffs[idx]);
-                    //T* p = derivatives->at(derives_shape*derives_shape*(j+15) + derives_shape*(i+15) + (k+15));
-                    //cout << coeffs[1] << " " << *(p+1) << endl;
-                    //cout << coeffs[0] << " " << *(derivatives->at(derives_shape*derives_shape*(j+15) + derives_shape*(i+15) + (k+15)))<< endl;
 
+                    // compute the index to the derivatives vector from loop indicies i, j and k
+                    int idx = derives_shape*derives_shape*(j+15) + derives_shape*(i+15) + (k+15);
+
+                    // store the derivatives
+                    derivatives->at(idx) = X_inv_dot(&Y, arrayCoeffs[idx]);
                 }
             }
         }
@@ -398,6 +383,7 @@ class Interpolation_3D{
 
         vector1D target_Y(64);
         get_target_Y(&target_Y, y-y1, x-x1, z-z1);
+
         return dot(&target_Y, derivatives->at(derives_shape*derives_shape*(y1+15) + derives_shape*(x1+15) + (z1+15)) );
     }
 
@@ -422,7 +408,6 @@ class Interpolation_3D{
         y = y - oy;
         z = z - oz;
 
-        //result.resize(3);
         result->at(0) = c*x+s*(wy*z-wz*y)+(1-c)*(wx*x+wy*y+wz*z)*wx + ox;
         result->at(1) = c*y+s*(wz*x-wx*z)+(1-c)*(wx*x+wy*y+wz*z)*wy + oy;
         result->at(2) = c*z+s*(wx*y-wy*x)+(1-c)*(wx*x+wy*y+wz*z)*wz + oz;
@@ -434,38 +419,40 @@ class Interpolation_3D{
         float ox = (shape-1)/2;
         float oy = (shape-1)/2;
         float oz = (shape-1)/2;
+
+        // interpolate every point
         vector1D dest_coords(3);
         for(int i = 0; i < shape; ++i){
             for(int j = 0; j < shape; ++j){
                 for(int k = 0; k < shape; ++k){
                     rotate_coords_3d(&dest_coords, i, j, k, theta, wx, wy, wz, ox, oy, oz);
-                    dest[shape*shape*i+shape*j+k] = trilinear_interp(volume,dest_coords[0],dest_coords[1],dest_coords[2]);
+                    dest[shape*shape*j+shape*i+k] = trilinear_interp(volume,dest_coords[0],dest_coords[1],dest_coords[2]);
                 }
             }
         }
         return dest;
     }
 
-    static vector1D rotate_volume_tricubic(const vector1D *volume, float theta, float wx, float wy, float wz){
-        float shape = cbrt(volume->size());
+    static vector1D rotate_volume_tricubic(const pointer1D *derivs, float theta, float wx, float wy, float wz){
+        float shape = cbrt(derivs->size()) - 30;
         vector1D dest(shape*shape*shape);
 
-        int derivs_shape = shape+30;
-        pointer1D derivs(derivs_shape*derivs_shape*derivs_shape);
-        tricubic_derivatives(volume, &derivs);
+        // int derivs_shape = shape+30;
+        // pointer1D derivs(derivs_shape*derivs_shape*derivs_shape);
+        // tricubic_derivatives(volume, &derivs);
 
         //find center of the volume
         float ox = (float(shape)-1)/2;
         float oy = (float(shape)-1)/2;
         float oz = (float(shape)-1)/2;
 
+        // interpolate every point
         vector1D dest_coords(3);
         for(int i = 0; i < shape; ++i){
             for(int j = 0; j < shape; ++j){
                 for(int k = 0; k < shape; ++k){
                     rotate_coords_3d(&dest_coords, i, j, k, theta, wx, wy, wz, ox, oy, oz);
-                    //cout << i << "," << j << "," << k << endl; 
-                    dest[shape*shape*i+shape*j+k] = tricubic_interp(&derivs,dest_coords[0],dest_coords[1],dest_coords[2]);
+                    dest[shape*shape*j+shape*i+k] = tricubic_interp(derivs,dest_coords[0],dest_coords[1],dest_coords[2]);
                 }
             }
         }

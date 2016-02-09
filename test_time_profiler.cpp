@@ -28,6 +28,10 @@ int main(){
     float wy = 0;
     float wz = 0;
 
+    int derivs_shape = num_slice + 30;
+    pointer1D derivs(derivs_shape*derivs_shape*derivs_shape);
+    interp::tricubic_derivatives(&vol1, &derivs);
+
     vector1D dest = interp::rotate_volume_trilinear(&vol1,theta,wx,wy,wz);
 
     // while(wx!=0){
@@ -36,7 +40,7 @@ int main(){
     
     vector1D dest_cub;
     for (int i=0; i < 10; ++i){
-        vector1D dest_cub = interp::rotate_volume_tricubic(&vol1,theta,wx,wy,wz);
+        vector1D dest_cub = interp::rotate_volume_tricubic(&derivs,theta,wx,wy,wz);
     }
 
     return 0;
