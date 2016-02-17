@@ -1,3 +1,4 @@
+.DS_Store
 *.o
 *.swp
 *.un~
@@ -5,3 +6,6 @@
 test
 *.dat
 3d_interpolation
+test_interp
+test_read_file
+test_time_profiler
