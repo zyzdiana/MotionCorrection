@@ -97,45 +97,6 @@ class Interpolation_3D{
             return input;
     }
 
-    static float trilinear_interp(const vector1D *volume, const float x, const float y, const float z){
-        // get the shape from input volume
-        int shape = cbrt(volume->size());
-
-        int x0 = int(floor(x));
-        int x1 = x0 + 1;
-        int y0 = int(floor(y));
-        int y1 = y0 + 1;
-        int z0 = int(floor(z));
-        int z1 = z0 + 1;
-
-        // clip range
-        x0 = clip(x0, 0, shape-1);
-        x1 = clip(x1, 0, shape-1);
-        y0 = clip(y0, 0, shape-1);
-        y1 = clip(y1, 0, shape-1);
-        z0 = clip(z0, 0, shape-1);
-        z1 = clip(z1, 0, shape-1);
-        
-        //define some coefficients
-        float xd = x - x0;
-        float yd = y - y0;
-        float zd = z - z0;
-
-        //set up for the bilinear interpolation
-        float C00 = volume->at(32*32*y0+32*x0+z0)*(1-xd) + volume->at(32*32*y0+32*x1+z0)*xd;
-        float C10 = volume->at(32*32*y1+32*x0+z0)*(1-xd) + volume->at(32*32*y1+32*x1+z0)*xd;
-
-        float C01 = volume->at(32*32*y0+32*x0+z1)*(1-xd) + volume->at(32*32*y0+32*x1+z1)*xd;
-        float C11 = volume->at(32*32*y1+32*x0+z1)*(1-xd) + volume->at(32*32*y1+32*x1+z1)*xd;
-
-        float C0 = C00*(1-yd) + C10*yd;
-        float C1 = C01*(1-yd) + C11*yd;
-        
-        float C = C0*(1-zd) + C1*zd;
-
-        // return result
-        return C; 
-    }
 
     // Function for computing the dot product of the inverse matrix with a vector Y
     static T* X_inv_dot(const vector1D *Y, T coeffs[64]){
@@ -412,6 +373,7 @@ class Interpolation_3D{
         result->at(1) = c*y+s*(wz*x-wx*z)+(1-c)*(wx*x+wy*y+wz*z)*wy + oy;
         result->at(2) = c*z+s*(wx*y-wy*x)+(1-c)*(wx*x+wy*y+wz*z)*wz + oz;
     }
+/*
     static vector1D rotate_volume_trilinear(const vector1D *volume, float theta, float wx, float wy, float wz){
        float shape = float( cbrt(volume->size()) );
        vector1D dest(shape*shape*shape);
@@ -432,7 +394,7 @@ class Interpolation_3D{
         }
         return dest;
     }
-
+*/
     static vector1D rotate_volume_tricubic(const pointer1D *derivs, float theta, float wx, float wy, float wz){
         float shape = cbrt(derivs->size()) - 30;
         vector1D dest(shape*shape*shape);

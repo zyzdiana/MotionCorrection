@@ -22,10 +22,12 @@ test_interp:
 
 test_time_profiler:
 
-test: BinaryFile_tests.o interp3D_tests.o
+#test: BinaryFile_tests.o interp3D_tests.o
+test: BinaryFile_tests.o Volume_tests.o TrilinearInterpolator_tests.o
 
 clean:
 	rm -f *.o
+	rm -f test
 	rm -f test_read_file
 	rm -f test_interp
 	rm -f test_time_profiler
