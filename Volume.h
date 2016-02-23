@@ -1,6 +1,8 @@
 #ifndef Volume_h
 #define Volume_h
 
+#include <Eigen/Dense>
+
 template <
     typename _T,
     typename _StorageT >
@@ -13,6 +15,7 @@ class Volume {
         const StorageT data,
         const size_t cubeSize) :
         cubeSize(cubeSize),
+        cubeCenter((cubeSize/2 - 0.5),(cubeSize/2 - 0.5),(cubeSize/2 - 0.5)),
         data(data),
         maxCubeIndex(cubeSize - 1) {}
 
@@ -37,8 +40,11 @@ class Volume {
         return index;
     }
 
+
+
   public:
     const size_t cubeSize;
+    const Eigen::Vector3f cubeCenter;
 
   protected:
     const int maxCubeIndex;

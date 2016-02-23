@@ -1,6 +1,10 @@
 #include "ReadFile.h"
 #include "BinaryFile.h"
 #include "Interpolation_3D.h"
+#include "TrilinearInterpolator.h"
+#include "TricubicInterpolator.h"
+#include "Utils.h"
+#include "Volume.h"
 
 #include <vector>
 #include <complex>
@@ -10,6 +14,7 @@
 #include <sys/time.h>
 
 using namespace std;
+using namespace Eigen;
 
 typedef Interpolation_3D<float> interp;
 typedef interp::vector1D vector1D;
@@ -19,10 +24,12 @@ typedef complex<float> dataT;
 int main(){
     string path = "/Users/zyzdiana/Dropbox/THESIS/Oct_13_navs/8mm_iso_x_rot_3_0_to_5_0_deg_z_trans_rep_0";
     int num_slice = 32;
-
     vector1D vol1(32*32*32); 
 
     ReadFile<float>::read_volume(&vol1, path, num_slice);
+
+    typedef Volume<float, std::vector<float> > VolumeT;
+    VolumeT volume(vol1, num_slice);
 
     float theta = 0.0;
     float wx = 0;
@@ -64,5 +71,16 @@ int main(){
     
     //cout << dest_coords[0] << " " << dest_coords[1] << " " << dest_coords[2] << " " << endl;
     //interp::rotate_coords_3d(vector1D *result, float x, float y, float z, float theta, float wx, float wy, float wz, float ox, float oy, float oz)
+
+    Matrix3f R;
+    R = Utils::get_rotation_matrix(90, 1.0, 0.0, 0.0);
+    cout << R << endl;
+    cout << volume.cubeCenter << endl;
+    cout << R*(Vector3f(0,0,0)-volume.cubeCenter)+volume.cubeCenter<<endl;
+
+
+
+
+
     return 0;
 }

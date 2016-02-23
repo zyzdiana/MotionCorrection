@@ -2,6 +2,7 @@ VERSION = DEBUG
 
 ifeq ($(VERSION), DEBUG)                                                        
 CXXFLAGS += -g
+CXXFLAGS += -I/Users/zyzdiana/GitHub/eigen/
 endif                                                                           
 ifeq ($(VERSION), RELEASE)                                                      
 CXXFLAGS += -O4
@@ -22,8 +23,14 @@ test_interp:
 
 test_time_profiler:
 
+test_inverse:
+
+test_rotate_coords:
+
+test_tricubic:
+
 #test: BinaryFile_tests.o interp3D_tests.o
-test: BinaryFile_tests.o Volume_tests.o TrilinearInterpolator_tests.o
+test: BinaryFile_tests.o Volume_tests.o TrilinearInterpolator_tests.o TricubicInterpolator_tests.o interp3D_tests.o
 
 clean:
 	rm -f *.o

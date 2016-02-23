@@ -20,6 +20,7 @@ class Interpolator3D {
 
   protected:
     const VolumeT *volume;
+
 };
 
 #endif

@@ -14,7 +14,7 @@ using namespace std;
 
 // MAX_DERIVS_SIZE is used to allocate a 2D array to store derivatives
 static const int MAX_DERIVS_SIZE = 70*70*70;
-static const float PI = 3.141592653589793238463;
+static const float pi = 3.141592653589793238463;
 static const int X_inv[64][64] ={
     { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     { 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -81,7 +81,6 @@ static const int X_inv[64][64] ={
     {-12,12,12,-12,12,-12,-12,12,-8,-4, 8, 4, 8, 4,-8,-4,-6, 6,-6, 6, 6,-6, 6,-6,-6, 6, 6,-6,-6, 6, 6,-6,-4,-2,-4,-2, 4, 2, 4, 2,-4,-2, 4, 2,-4,-2, 4, 2,-3, 3,-3, 3,-3, 3,-3, 3,-2,-1,-2,-1,-2,-1,-2,-1},
     { 8,-8,-8, 8,-8, 8, 8,-8, 4, 4,-4,-4,-4,-4, 4, 4, 4,-4, 4,-4,-4, 4,-4, 4, 4,-4,-4, 4, 4,-4,-4, 4, 2, 2, 2, 2,-2,-2,-2,-2, 2, 2,-2,-2, 2, 2,-2,-2, 2,-2, 2,-2, 2,-2, 2,-2, 1, 1, 1, 1, 1, 1, 1, 1}
 };
-
 template <typename T>
 class Interpolation_3D{
   public:
@@ -349,7 +348,7 @@ class Interpolation_3D{
     }
 
     static float to_radian(float angle){
-        return angle*PI/180.0;
+        return angle*pi/180.0;
     }
 
     static void rotate_coords_3d(vector1D *result, float x, float y, float z, float theta, float wx, float wy, float wz, float ox, float oy, float oz){
