@@ -10,12 +10,13 @@ class Volume {
   public:
     typedef _T T;
     typedef _StorageT StorageT;
+    typedef Eigen::Matrix<T,3,1> CoordT;
 
     Volume(
         const StorageT data,
         const size_t cubeSize) :
         cubeSize(cubeSize),
-        cubeCenter((cubeSize/2 - 0.5),(cubeSize/2 - 0.5),(cubeSize/2 - 0.5)),
+        cubeCenter(cubeCenterFromCubeSize(cubeSize)),
         data(data),
         maxCubeIndex(cubeSize - 1) {}
 
@@ -40,11 +41,17 @@ class Volume {
         return index;
     }
 
+  protected:
+    static CoordT cubeCenterFromCubeSize(const float cubeSize) {
+        T center = ((T) cubeSize)/(T)2.0 - (T)0.5;
+
+        return CoordT(center, center, center);
+    }
 
 
   public:
     const size_t cubeSize;
-    const Eigen::Vector3f cubeCenter;
+    const CoordT cubeCenter;
 
   protected:
     const int maxCubeIndex;

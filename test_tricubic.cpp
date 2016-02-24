@@ -63,7 +63,7 @@ int main(){
     // double wall0 = get_wall_time();
     // double cpu0  = get_cpu_time();
 
-    // string path = "/Users/zyzdiana/Dropbox/THESIS/Oct_13_navs/8mm_iso_x_rot_3_0_to_5_0_deg_z_trans_rep_0";
+    // string path = "test_data/8mm_iso_x_rot_0_5_to_2_5_deg_z_trans_rep_0_slice_0.dat";
     // const size_t cubeSize = 32;
     // const size_t cubeVectorLength = cubeSize*cubeSize*cubeSize;
 
@@ -101,7 +101,7 @@ int main(){
     // cout << "CPU Time Cubic Interplation = " << cpu1  - cpu0  << endl;
 
 
-    string path = "/Users/zyzdiana/Dropbox/THESIS/Oct_13_navs/8mm_iso_x_rot_3_0_to_5_0_deg_z_trans_rep_0";
+    string path = "test_data/8mm_iso_x_rot_0_5_to_2_5_deg_z_trans_rep_0";
 
     const size_t cubeSize = 32;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
@@ -120,27 +120,29 @@ int main(){
     int wz = 0;
 
     float theta = 90.0;
-
-    string path_ref = "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/linear_Vol1_" + std::to_string(int(theta)) + std::to_string(int(wx)) + std::to_string(int(wy)) + std::to_string(int(wz)) + ".dat";
-    std::vector<float> ref_vector = ReadFile<float>::read_reference_volume(path_ref, cubeVectorLength);
-    VolumeT vol_ref(ref_vector, cubeSize);
+//
+//    string path_ref = "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/linear_Vol1_" + std::to_string(int(theta)) + std::to_string(int(wx)) + std::to_string(int(wy)) + std::to_string(int(wz)) + ".dat";
+//    std::vector<float> ref_vector = ReadFile<float>::read_reference_volume(path_ref, cubeVectorLength);
+//    VolumeT vol_ref(ref_vector, cubeSize);
     Matrix3f R;
     R = Utils::get_rotation_matrix(theta, wx, wy, wz);
     Vector3f dest_coords;
 
+    while(true) {
     for(size_t z = 0; z < cubeSize; z++) {
         for(size_t y = 0; y < cubeSize; y++) {
             for(size_t x = 0; x < cubeSize; x++) {
 
-                dest_coords = R*(Vector3f(y,x,z)-volume.cubeCenter)+volume.cubeCenter;
+                dest_coords.noalias() = R*(Vector3f(y,x,z)-volume.cubeCenter)+volume.cubeCenter;
 
-                float tmp = linear_interpolator.interp(dest_coords(1), dest_coords(0), dest_coords(2));
+                float tmp = cubic_interpolator.interp(dest_coords(1), dest_coords(0), dest_coords(2));
                 //float tmp = linear_interpolator.interp(z,y,x);
-                if(abs(tmp - vol_ref.at(x, y, z)) > 1e-5){
-                    cout << "idx(z,y,x)" << z << "," << y << "," << x << " values: " << tmp << ", " << vol_ref.at(x, y, z) << endl;
-                }
+                //if(abs(tmp - vol_ref.at(x, y, z)) > 1e-5){
+                //    cout << "idx(z,y,x)" << z << "," << y << "," << x << " values: " << tmp << ", " << vol_ref.at(x, y, z) << endl;
+                //}
             }
         }
+    }
     }
 
 }

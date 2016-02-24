@@ -19,9 +19,9 @@ class TricubicInterpolator :
 
   public:
     typedef typename VolumeT::T T;
-    typedef Matrix< float, Dynamic, Dynamic >  MatrixXT;
-    typedef Matrix< float, Dynamic, 1 >     VectorXT;
-    typedef Matrix< float, 1, Dynamic >     RowVectorXT;
+    typedef Matrix< T, Dynamic, Dynamic >  MatrixXT;
+    typedef Matrix< T, 64, 1 >     Vector64T;
+    typedef Matrix< T, 1, 64 >     RowVector64T;
     int derives_shape;
     MatrixXT generate_X_inv(){
         MatrixXT X_inv(64,64);
@@ -95,11 +95,13 @@ class TricubicInterpolator :
         Interpolator3D<VolumeT, coordT>(volume),
         X_inv(generate_X_inv()),
         derives_shape(volume->cubeSize+30),
-        derivatives(derives_shape * derives_shape * derives_shape){
+        derivatives(derives_shape * derives_shape * derives_shape),
+        target_YVec(target_YArr)
+        {
             int shape = volume->cubeSize;
 
             // a vector used to temporary store the polynomials of x, y, and z 
-            VectorXT Y(64);
+            Vector64T Y(64);
 
             for(int z = 0; z < derives_shape; ++z){
                 for(int y = 0; y < derives_shape; ++y){
@@ -233,75 +235,77 @@ class TricubicInterpolator :
             }
         }
 
-    static void get_target_Y(RowVectorXT *Y, float z, float y, float x){
-        (*Y)(0) = float(1.0);
-        (*Y)(1) = x;
-        (*Y)(2) = x*x;
-        (*Y)(3) = x*x*x;
-        (*Y)(4) = y;
-        (*Y)(5) = x*y;
-        (*Y)(6) = x*x*y;
-        (*Y)(7) = x*x*x*y;
-        (*Y)(8) = y*y;
-        (*Y)(9) = x*y*y;
-        (*Y)(10) = x*x*y*y;
-        (*Y)(11) = x*x*x*y*y;
-        (*Y)(12) = y*y*y;
-        (*Y)(13) = x*y*y*y;
-        (*Y)(14) = x*x*y*y*y;
-        (*Y)(15) = x*x*x*y*y*y;
+    void fill_target_Y(const T z, const T y, const T x) const {
+        T xSq = x*x;
+
+        target_YArr[0] = (T) 1.0;
+        target_YArr[1] = x;
+        target_YArr[2] = xSq;
+        target_YArr[3] = xSq * x; // x*x*x
+        target_YArr[4] = target_YArr[0] * y; // y
+        target_YArr[5] = target_YArr[1] * y; // x*y
+        target_YArr[6] = target_YArr[2] * y; // x*x*y
+        target_YArr[7] = target_YArr[3] * y; // x*x*x*y
+        target_YArr[8] = target_YArr[4] * y; // y*y
+        target_YArr[9] = target_YArr[5] * y; // x*y*y
+        target_YArr[10] = target_YArr[6] * y; // x*x*y*y
+        target_YArr[11] = target_YArr[7] * y; // x*x*x*y*y
+        target_YArr[12] = target_YArr[8] * y; // y*y*y
+        target_YArr[13] = target_YArr[9] * y; // x*y*y*y
+        target_YArr[14] = target_YArr[10] * y; // x*x*y*y*y
+        target_YArr[15] = target_YArr[11] * y; // x*x*x*y*y*y
         
 
-        (*Y)(16) = z;
-        (*Y)(17) = x*z;
-        (*Y)(18) = x*x*z;
-        (*Y)(19) = x*x*x*z;
-        (*Y)(20) = y*z;
-        (*Y)(21) = x*y*z;
-        (*Y)(22) = x*x*y*z;
-        (*Y)(23) = x*x*x*y*z;
-        (*Y)(24) = y*y*z;
-        (*Y)(25) = x*y*y*z;
-        (*Y)(26) = x*x*y*y*z;
-        (*Y)(27) = x*x*x*y*y*z;
-        (*Y)(28) = y*y*y*z;
-        (*Y)(29) = x*y*y*y*z;
-        (*Y)(30) = x*x*y*y*y*z;
-        (*Y)(31) = x*x*x*y*y*y*z;
+        target_YArr[16] = target_YArr[0] * z; // z
+        target_YArr[17] = target_YArr[1] * z; // x*z
+        target_YArr[18] = target_YArr[2] * z; // x*x*z
+        target_YArr[19] = target_YArr[3] * z; // x*x*x*z
+        target_YArr[20] = target_YArr[4] * z; // y*z
+        target_YArr[21] = target_YArr[5] * z; // x*y*z
+        target_YArr[22] = target_YArr[6] * z; // x*x*y*z
+        target_YArr[23] = target_YArr[7] * z; // x*x*x*y*z
+        target_YArr[24] = target_YArr[8] * z; // y*y*z
+        target_YArr[25] = target_YArr[9] * z; // x*y*y*z
+        target_YArr[26] = target_YArr[10] * z; // x*x*y*y*z
+        target_YArr[27] = target_YArr[11] * z; // x*x*x*y*y*z
+        target_YArr[28] = target_YArr[12] * z; // y*y*y*z
+        target_YArr[29] = target_YArr[13] * z; // x*y*y*y*z
+        target_YArr[30] = target_YArr[14] * z; // x*x*y*y*y*z
+        target_YArr[31] = target_YArr[15] * z; // x*x*x*y*y*y*z
 
-        (*Y)(32) = z*z;
-        (*Y)(33) = x*z*z;
-        (*Y)(34) = x*x*z*z;
-        (*Y)(35) = x*x*x*z*z;
-        (*Y)(36) = y*z*z;
-        (*Y)(37) = x*y*z*z;
-        (*Y)(38) = x*x*y*z*z;
-        (*Y)(39) = x*x*x*y*z*z;
-        (*Y)(40) = y*y*z*z;
-        (*Y)(41) = x*y*y*z*z;
-        (*Y)(42) = x*x*y*y*z*z;
-        (*Y)(43) = x*x*x*y*y*z*z;
-        (*Y)(44) = y*y*y*z*z;
-        (*Y)(45) = x*y*y*y*z*z;
-        (*Y)(46) = x*x*y*y*y*z*z;
-        (*Y)(47) = x*x*x*y*y*y*z*z;
+        target_YArr[32] = target_YArr[16] * z; // z*z
+        target_YArr[33] = target_YArr[17] * z; // x*z*z
+        target_YArr[34] = target_YArr[18] * z; // x*x*z*z
+        target_YArr[35] = target_YArr[19] * z; // x*x*x*z*z
+        target_YArr[36] = target_YArr[20] * z; // y*z*z
+        target_YArr[37] = target_YArr[21] * z; // x*y*z*z
+        target_YArr[38] = target_YArr[22] * z; // x*x*y*z*z
+        target_YArr[39] = target_YArr[23] * z; // x*x*x*y*z*z
+        target_YArr[40] = target_YArr[24] * z; // y*y*z*z
+        target_YArr[41] = target_YArr[25] * z; // x*y*y*z*z
+        target_YArr[42] = target_YArr[26] * z; // x*x*y*y*z*z
+        target_YArr[43] = target_YArr[27] * z; // x*x*x*y*y*z*z
+        target_YArr[44] = target_YArr[28] * z; // y*y*y*z*z
+        target_YArr[45] = target_YArr[29] * z; // x*y*y*y*z*z
+        target_YArr[46] = target_YArr[30] * z; // x*x*y*y*y*z*z
+        target_YArr[47] = target_YArr[31] * z; // x*x*x*y*y*y*z*z
 
-        (*Y)(48) = z*z*z;
-        (*Y)(49) = x*z*z*z;
-        (*Y)(50) = x*x*z*z*z;
-        (*Y)(51) = x*x*x*z*z*z;
-        (*Y)(52) = y*z*z*z;
-        (*Y)(53) = x*y*z*z*z;
-        (*Y)(54) = x*x*y*z*z*z;
-        (*Y)(55) = x*x*x*y*z*z*z;
-        (*Y)(56) = y*y*z*z*z;
-        (*Y)(57) = x*y*y*z*z*z;
-        (*Y)(58) = x*x*y*y*z*z*z;
-        (*Y)(59) = x*x*x*y*y*z*z*z;
-        (*Y)(60) = y*y*y*z*z*z;
-        (*Y)(61) = x*y*y*y*z*z*z;
-        (*Y)(62) = x*x*y*y*y*z*z*z;
-        (*Y)(63) = x*x*x*y*y*y*z*z*z;
+        target_YArr[48] = target_YArr[32] * z; // z*z*z;
+        target_YArr[49] = target_YArr[33] * z; // x*z*z*z;
+        target_YArr[50] = target_YArr[34] * z; // x*x*z*z*z;
+        target_YArr[51] = target_YArr[35] * z; // x*x*x*z*z*z;
+        target_YArr[52] = target_YArr[36] * z; // y*z*z*z;
+        target_YArr[53] = target_YArr[37] * z; // x*y*z*z*z;
+        target_YArr[54] = target_YArr[38] * z; // x*x*y*z*z*z;
+        target_YArr[55] = target_YArr[39] * z; // x*x*x*y*z*z*z;
+        target_YArr[56] = target_YArr[40] * z; // y*y*z*z*z;
+        target_YArr[57] = target_YArr[41] * z; // x*y*y*z*z*z;
+        target_YArr[58] = target_YArr[42] * z; // x*x*y*y*z*z*z;
+        target_YArr[59] = target_YArr[43] * z; // x*x*x*y*y*z*z*z;
+        target_YArr[60] = target_YArr[44] * z; // y*y*y*z*z*z;
+        target_YArr[61] = target_YArr[45] * z; // x*y*y*y*z*z*z;
+        target_YArr[62] = target_YArr[46] * z; // x*x*y*y*y*z*z*z;
+        target_YArr[63] = target_YArr[47] * z; // x*x*x*y*y*y*z*z*z;
     }
 
     virtual T interp(
@@ -313,13 +317,14 @@ class TricubicInterpolator :
         int y1 = y;
         int z1 = x;
 
-        RowVectorXT target_Y(64);
-        get_target_Y(&target_Y, y-y1, x-z1, z-x1);
-        return (target_Y * derivatives[derives_shape * (derives_shape*(y1+15) + (x1+15)) + (z1+15)]).value();
+        fill_target_Y(y-y1, x-z1, z-x1);
+        return target_YVec.dot(derivatives[derives_shape * (derives_shape*(y1+15) + (x1+15)) + (z1+15)]);
     }
   protected:
     const MatrixXT X_inv;
-    std::vector<MatrixXT> derivatives;
+    std::vector<Vector64T> derivatives;
+    mutable T target_YArr[64];
+    const Map<Vector64T> target_YVec;
 };
 
 #endif
