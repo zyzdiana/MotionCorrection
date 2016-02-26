@@ -1,11 +1,16 @@
 VERSION = DEBUG
+#VERSION = RELEASE
+
+CXXFLAGS += -I./
 
 ifeq ($(VERSION), DEBUG)                                                        
 CXXFLAGS += -g
-CXXFLAGS += -I/Users/zyzdiana/GitHub/eigen/
+LDFLAGS += -g
 endif                                                                           
 ifeq ($(VERSION), RELEASE)                                                      
-CXXFLAGS += -O4
+CXXFLAGS += -g
+CXXFLAGS += -O3
+LDFLAGS += -O3
 endif  
 
 UNAME := $(shell uname)
@@ -38,5 +43,6 @@ clean:
 	rm -f test_read_file
 	rm -f test_interp
 	rm -f test_time_profiler
+	rm -f test_tricubic
 
 PHONY: .clean
