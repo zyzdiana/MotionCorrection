@@ -97,15 +97,32 @@ TEST_CASE("Testing Rotation of 90 and 180 degrees"){
 
 
     for(int wx = 0; wx < 2; ++wx){
+        std::stringstream sswx;
+        sswx << wx;
+
         for(int wy = 0; wy < 2; ++wy){
+            std::stringstream sswy;
+            sswy << wy;
+
             for(int wz = 0; wz < 2; ++wz){
+                std::stringstream sswz;
+                sswz << wz;
+
                 SECTION("Rotation of 90 degrees using trilinear interpolation returns same volume as python"){
                     float theta = 90.0;
                     Matrix3f R;
                     R = Utils::get_rotation_matrix(theta, wx, wy, wz);
                     Vector3f dest_coords;
+                
+                    std::stringstream sstheta;
+                    sstheta << (int) theta;
 
-                    string path_ref = "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/linear_Vol1_" + std::to_string(int(theta)) + std::to_string(int(wx)) + std::to_string(int(wy)) + std::to_string(int(wz)) + ".dat";
+                    string path_ref =
+                      "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/linear_Vol1_" +
+                      sstheta.str() +
+                      sswx.str() +
+                      sswy.str() + 
+                      sswz.str() + ".dat";
                     std::vector<float> ref_vector = ReadFile<float>::read_reference_volume(path_ref, cubeVectorLength);
                     VolumeT vol_ref(ref_vector, cubeSize);
 
@@ -127,7 +144,15 @@ TEST_CASE("Testing Rotation of 90 and 180 degrees"){
                     R = Utils::get_rotation_matrix(theta, wx, wy, wz);
                     Vector3f dest_coords;
 
-                    string path_ref = "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/linear_Vol1_" + std::to_string(int(theta)) + std::to_string(int(wx)) + std::to_string(int(wy)) + std::to_string(int(wz)) + ".dat";
+                    std::stringstream sstheta;
+                    sstheta << (int) theta;
+
+                    string path_ref =
+                      "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/linear_Vol1_" +
+                      sstheta.str() +
+                      sswx.str() +
+                      sswy.str() + 
+                      sswz.str() + ".dat";
                     std::vector<float> ref_vector = ReadFile<float>::read_reference_volume(path_ref, cubeVectorLength);
                     VolumeT vol_ref(ref_vector, cubeSize);
 
@@ -149,7 +174,15 @@ TEST_CASE("Testing Rotation of 90 and 180 degrees"){
                     R = Utils::get_rotation_matrix(theta, wx, wy, wz);
                     Vector3f dest_coords;
 
-                    string path_ref = "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/cubic_Vol1_" + std::to_string(int(theta)) + std::to_string(int(wx)) + std::to_string(int(wy)) + std::to_string(int(wz)) + ".dat";
+                    std::stringstream sstheta;
+                    sstheta << (int) theta;
+
+                    string path_ref =
+                      "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/linear_Vol1_" +
+                      sstheta.str() +
+                      sswx.str() +
+                      sswy.str() + 
+                      sswz.str() + ".dat";
                     std::vector<float> ref_vector = ReadFile<float>::read_reference_volume(path_ref, cubeVectorLength);
                     VolumeT vol_ref(ref_vector, cubeSize);
 
@@ -170,7 +203,15 @@ TEST_CASE("Testing Rotation of 90 and 180 degrees"){
                     R = Utils::get_rotation_matrix(theta, wx, wy, wz);
                     Vector3f dest_coords;
 
-                    string path_ref = "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/cubic_Vol1_" + std::to_string(int(theta)) + std::to_string(int(wx)) + std::to_string(int(wy)) + std::to_string(int(wz)) + ".dat";
+                    std::stringstream sstheta;
+                    sstheta << (int) theta;
+
+                    string path_ref =
+                      "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/linear_Vol1_" +
+                      sstheta.str() +
+                      sswx.str() +
+                      sswy.str() + 
+                      sswz.str() + ".dat";
                     std::vector<float> ref_vector = ReadFile<float>::read_reference_volume(path_ref, cubeVectorLength);
                     VolumeT vol_ref(ref_vector, cubeSize);
 

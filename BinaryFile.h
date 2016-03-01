@@ -5,6 +5,10 @@
 #include <string>
 #include <iostream>
 #include <fcntl.h>
+#ifdef LINUX
+#include <unistd.h>
+#include <stdlib.h>
+#endif
 
 template <typename T>
 class BinaryFile{

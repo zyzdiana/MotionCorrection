@@ -18,7 +18,14 @@ UNAME := $(shell uname)
 ifeq ($(UNAME), Darwin)                                                         
 CXX = clang++
 LDFLAGS += -framework Accelerate
+CXXFLAGS += -DOSX
 endif
+
+ifeq ($(UNAME), Linux)
+CXX = g++
+CXXFLAGS += -DLINUX
+endif
+
 
 all: test test_read_file test_interp test_time_profiler test_rotate_coords
 
