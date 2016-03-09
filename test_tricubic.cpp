@@ -101,7 +101,7 @@ int main(){
     // cout << "CPU Time Cubic Interplation = " << cpu1  - cpu0  << endl;
 
 
-    string path = "test_data/8mm_iso_x_rot_0_5_to_2_5_deg_z_trans_rep_0";
+    string path = "/Users/zyzdiana/Dropbox/THESIS/Oct_13_navs/8mm_iso_x_rot_0_5_to_2_5_deg_z_trans_rep_0";
 
     const size_t cubeSize = 32;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;

@@ -2,7 +2,7 @@
 #define TrilinearInterpolator_h
 
 #include "Interpolator3D.h"
-
+using namespace Eigen;
 template <
     typename VolumeT,
     typename coordT>
@@ -10,9 +10,17 @@ class TrilinearInterpolator :
     public Interpolator3D<VolumeT, coordT> {
   public:
     typedef typename VolumeT::T T;
+    typedef Matrix< T, 3, 1 > CoordT;
+
+    const int derives_shape;
+    const int cubeSize;
+    const CoordT cubeCenter;
 
     TrilinearInterpolator(const VolumeT *volume) :
-        Interpolator3D<VolumeT, coordT>(volume) {}
+        Interpolator3D<VolumeT, coordT>(volume),
+        derives_shape(volume->cubeSize),
+        cubeSize(volume->cubeSize),
+        cubeCenter(volume->cubeCenter) {}
 
     virtual T interp(
         const coordT z,

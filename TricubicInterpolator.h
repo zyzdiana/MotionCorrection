@@ -20,9 +20,14 @@ class TricubicInterpolator :
   public:
     typedef typename VolumeT::T T;
     typedef Matrix< T, Dynamic, Dynamic >  MatrixXT;
-    typedef Matrix< T, 64, 1 >     Vector64T;
-    typedef Matrix< T, 1, 64 >     RowVector64T;
-    int derives_shape;
+    typedef Matrix< T, 64, 1 > Vector64T;
+    typedef Matrix< T, 1, 64 > RowVector64T;
+    typedef Matrix< T, 3, 1 > CoordT;
+    typedef Matrix< T, 3, Dynamic >  Matrix3X;
+
+    const int derives_shape;
+    const int cubeSize;
+    const CoordT cubeCenter;
     MatrixXT generate_X_inv(){
         MatrixXT X_inv(64,64);
         X_inv << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -95,11 +100,11 @@ class TricubicInterpolator :
         Interpolator3D<VolumeT, coordT>(volume),
         X_inv(generate_X_inv()),
         derives_shape(volume->cubeSize+30),
+        cubeSize(volume->cubeSize),
+        cubeCenter(volume->cubeCenter),
         derivatives(derives_shape * derives_shape * derives_shape),
         target_YVec(target_YArr)
         {
-            int shape = volume->cubeSize;
-
             // a vector used to temporary store the polynomials of x, y, and z 
             Vector64T Y(64);
 
@@ -121,20 +126,20 @@ class TricubicInterpolator :
                         int z3 = z2 + 1;
 
                         //Wrap Around
-                        x0 = (x0 + shape) % shape;
-                        x1 = (x1 + shape) % shape;
-                        x2 = (x2 + shape) % shape;
-                        x3 = (x3 + shape) % shape;
+                        x0 = (x0 + cubeSize) % cubeSize;
+                        x1 = (x1 + cubeSize) % cubeSize;
+                        x2 = (x2 + cubeSize) % cubeSize;
+                        x3 = (x3 + cubeSize) % cubeSize;
 
-                        y0 = (y0 + shape) % shape;
-                        y1 = (y1 + shape) % shape;
-                        y2 = (y2 + shape) % shape;
-                        y3 = (y3 + shape) % shape;
+                        y0 = (y0 + cubeSize) % cubeSize;
+                        y1 = (y1 + cubeSize) % cubeSize;
+                        y2 = (y2 + cubeSize) % cubeSize;
+                        y3 = (y3 + cubeSize) % cubeSize;
 
-                        z0 = (z0 + shape) % shape;
-                        z1 = (z1 + shape) % shape;
-                        z2 = (z2 + shape) % shape;
-                        z3 = (z3 + shape) % shape;                    
+                        z0 = (z0 + cubeSize) % cubeSize;
+                        z1 = (z1 + cubeSize) % cubeSize;
+                        z2 = (z2 + cubeSize) % cubeSize;
+                        z3 = (z3 + cubeSize) % cubeSize;                    
 
                         //values of f(x,y,z) at each corner.
                         Y(0)= this->volume->at(z1, y1, x1);
@@ -308,6 +313,10 @@ class TricubicInterpolator :
         target_YArr[63] = target_YArr[47] * z; // x*x*x*y*y*y*z*z*z;
     }
 
+    std::vector<Vector64T>* get_derivatives(){
+        return &derivatives;
+    }
+
     virtual T interp(
         const coordT z,
         const coordT y,
@@ -320,11 +329,30 @@ class TricubicInterpolator :
         fill_target_Y(y-y1, x-z1, z-x1);
         return target_YVec.dot(derivatives[derives_shape * (derives_shape*(y1+15) + (x1+15)) + (z1+15)]);
     }
+    virtual Matrix3X compute_axis_derivatives(){
+            axis_derivatives.resize(3, cubeSize*cubeSize*cubeSize);
+            int idx = 0;
+
+            for(int z = 0; z < cubeSize; ++z){
+                for(int y = 0; y < cubeSize; ++y){
+                    for(int x = 0; x < cubeSize; ++x){
+                        axis_derivatives.col(idx) << (derivatives[derives_shape * (derives_shape*(y+15) + (z+15)) + (x+15)])(4), 
+                                            (derivatives[derives_shape * (derives_shape*(y+15) + (z+15)) + (x+15)])(16),
+                                            (derivatives[derives_shape * (derives_shape*(y+15) + (z+15)) + (x+15)])(1);
+
+                        idx++;
+                    }
+                }
+            }
+        return axis_derivatives;
+    }
+
   protected:
     const MatrixXT X_inv;
     std::vector<Vector64T> derivatives;
     mutable T target_YArr[64];
     const Map<Vector64T> target_YVec;
+    Matrix3X axis_derivatives;
 };
 
 #endif
