@@ -1,16 +1,15 @@
 #ifndef Volume_h
 #define Volume_h
 
-#include <Eigen/Dense>
-
 template <
     typename _T,
-    typename _StorageT >
+    typename _StorageT,
+    typename _CoordT>
 class Volume {
   public:
     typedef _T T;
     typedef _StorageT StorageT;
-    typedef Eigen::Matrix<T,3,1> CoordT;
+    typedef _CoordT CoordT;
 
     Volume(
         const StorageT data,
@@ -54,10 +53,13 @@ class Volume {
     }
 
   protected:
-    static CoordT cubeCenterFromCubeSize(const float cubeSize) {
-        T center = ((T) cubeSize)/(T)2.0 - (T)0.5;
+    template <typename TripleT>
+    TripleT cubeCenterAsTriple() const {
+      return TripleT(cubeCenter, cubeCenter, cubeCenter); 
+    }
 
-        return CoordT(center, center, center);
+    static CoordT cubeCenterFromCubeSize(const float cubeSize) {
+        return ((CoordT) cubeSize)/(CoordT)2.0 - (CoordT)0.5;
     }
 
 

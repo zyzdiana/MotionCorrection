@@ -9,7 +9,7 @@
 
 TEST_CASE("the derivative of a constant volume is zero everywhere") {
     typedef std::complex<float> dataT;
-    typedef Volume<dataT, std::vector<dataT> > VolumeT; 
+    typedef Volume<dataT, std::vector<dataT>, float > VolumeT; 
 
     const size_t cubeSize = 10;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
@@ -28,7 +28,7 @@ TEST_CASE("the derivative of a constant volume is zero everywhere") {
 
 
     SECTION("in the z direction") {
-      Volume<dataT, std::vector<dataT> > dz(initialData, cubeSize);
+      VolumeT dz(initialData, cubeSize);
       
       differ.zDerivative(&dz);
 
@@ -38,7 +38,7 @@ TEST_CASE("the derivative of a constant volume is zero everywhere") {
     }
     
     SECTION("in the y direction") {
-      Volume<dataT, std::vector<dataT> > dy(initialData, cubeSize);
+      VolumeT dy(initialData, cubeSize);
       
       differ.yDerivative(&dy);
 
@@ -48,7 +48,7 @@ TEST_CASE("the derivative of a constant volume is zero everywhere") {
     }
     
     SECTION("in the x direction") {
-      Volume<dataT, std::vector<dataT> > dx(initialData, cubeSize);
+      VolumeT dx(initialData, cubeSize);
       
       differ.xDerivative(&dx);
 
