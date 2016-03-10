@@ -1,7 +1,8 @@
 VERSION = DEBUG
 #VERSION = RELEASE
 
-CXXFLAGS += -I/Users/zyzdiana/GitHub/MotionCorrection/
+CXXFLAGS += -I./
+#CXXFLAGS += -I/Users/zyzdiana/GitHub/MotionCorrection/
 
 ifeq ($(VERSION), DEBUG)                                                        
 CXXFLAGS += -g
