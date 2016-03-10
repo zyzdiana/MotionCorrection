@@ -45,7 +45,11 @@ test_tricubic:
 test_gn:
 
 #test: BinaryFile_tests.o interp3D_tests.o
-test: BinaryFile_tests.o Volume_tests.o TrilinearInterpolator_tests.o TricubicInterpolator_tests.o interp3D_tests.o
+TESTOBJECTS += BinaryFile_tests.o
+TESTOBJECTS += Volume_tests.o
+TESTOBJECTS += CentralDifferenceDifferentiator_tests.o
+
+test: $(TESTOBJECTS)
 
 clean:
 	rm -f *.o
