@@ -72,7 +72,6 @@ class Volume {
         return ((CoordT) cubeSize)/(CoordT)2.0 - (CoordT)0.5;
     }
 
-
   public:
     const size_t cubeSize;
     const size_t totalPoints;

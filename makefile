@@ -1,5 +1,5 @@
-VERSION = DEBUG
-#VERSION = RELEASE
+#VERSION = DEBUG
+VERSION = RELEASE
 
 CXXFLAGS += -I./
 #CXXFLAGS += -I/Users/zyzdiana/GitHub/MotionCorrection/
