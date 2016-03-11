@@ -3,33 +3,29 @@
 
 #include "Interpolator3D.h"
 
+#include "Volume.h"
+
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
 #include <Eigen/Dense>
 #include <vector>
-using namespace Eigen;
-using namespace std;
+#include <cmath>
 
 template <
     typename VolumeT,
-    typename coordT>
+    typename CoordT
+  >
 class TricubicInterpolator :
-    public Interpolator3D<VolumeT, coordT> {
+  public Interpolator3D<VolumeT, CoordT> {
 
   public:
     typedef typename VolumeT::T T;
-    typedef Matrix< T, Dynamic, Dynamic >  MatrixXT;
-    typedef Matrix< T, 64, 1 > Vector64T;
-    typedef Matrix< T, 1, 64 > RowVector64T;
-    typedef Matrix< T, 3, 1 > CoordT;
-    typedef Matrix< T, 3, Dynamic >  Matrix3X;
+    typedef Eigen::Matrix< T, 64, 64 >  Matrix_64_64_T;
+    typedef Eigen::Matrix< T, 64, Eigen::Dynamic >  Matrix_64_X_T;
 
-    const int derives_shape;
-    const int cubeSize;
-    const CoordT cubeCenter;
-    MatrixXT generate_X_inv(){
-        MatrixXT X_inv(64,64);
+    Matrix_64_64_T generate_X_inv(){
+        Matrix_64_64_T X_inv(64,64);
         X_inv << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                  0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 -3, 3, 0, 0, 0, 0, 0, 0,-2,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -96,151 +92,109 @@ class TricubicInterpolator :
                  8,-8,-8, 8,-8, 8, 8,-8, 4, 4,-4,-4,-4,-4, 4, 4, 4,-4, 4,-4,-4, 4,-4, 4, 4,-4,-4, 4, 4,-4,-4, 4, 2, 2, 2, 2,-2,-2,-2,-2, 2, 2,-2,-2, 2, 2,-2,-2, 2,-2, 2,-2, 2,-2, 2,-2, 1, 1, 1, 1, 1, 1, 1, 1;
         return X_inv;
     }
-    TricubicInterpolator(const VolumeT *volume) :
-        Interpolator3D<VolumeT, coordT>(volume),
-        X_inv(generate_X_inv()),
-        derives_shape(volume->cubeSize+30),
-        cubeSize(volume->cubeSize),
-        cubeCenter(volume->cubeCenter),
-        derivatives(derives_shape * derives_shape * derives_shape),
-        target_YVec(target_YArr)
-        {
-            // a vector used to temporary store the polynomials of x, y, and z 
-            Vector64T Y(64);
 
-            for(int z = 0; z < derives_shape; ++z){
-                for(int y = 0; y < derives_shape; ++y){
-                    for(int x = 0; x < derives_shape; ++x){
-                        int z1 = x - 15;
-                        int y1 = y - 15;
-                        int x1 = z - 15;
-                        
-                        int x0 = x1 - 1;
-                        int x2 = x1 + 1;
-                        int x3 = x2 + 1;
-                        int y0 = y1 - 1;
-                        int y2 = y1 + 1;
-                        int y3 = y2 + 1;
-                        int z0 = z1 - 1;
-                        int z2 = z1 + 1;
-                        int z3 = z2 + 1;
 
-                        //Wrap Around
-                        x0 = (x0 + cubeSize) % cubeSize;
-                        x1 = (x1 + cubeSize) % cubeSize;
-                        x2 = (x2 + cubeSize) % cubeSize;
-                        x3 = (x3 + cubeSize) % cubeSize;
+  protected:
+    static void constructCoeffVectorSubpart(
+      T *temp,
+      const VolumeT *volume,
+      const int z,
+      const int y,
+      const int x) {
+        size_t xPlus1 = volume->wrapIndex(x + 1);
+        size_t yPlus1 = volume->wrapIndex(y + 1);
+        size_t zPlus1 = volume->wrapIndex(z + 1);
 
-                        y0 = (y0 + cubeSize) % cubeSize;
-                        y1 = (y1 + cubeSize) % cubeSize;
-                        y2 = (y2 + cubeSize) % cubeSize;
-                        y3 = (y3 + cubeSize) % cubeSize;
+        temp[0]= volume->at(z, y, x);
+        temp[1]= volume->at(z, y, xPlus1);
+        temp[2]= volume->at(z, yPlus1, x);
+        temp[3]= volume->at(z, yPlus1, xPlus1);
+        temp[4]= volume->at(zPlus1, y, x);
+        temp[5]= volume->at(zPlus1, y, xPlus1);
+        temp[6]= volume->at(zPlus1, yPlus1, x);
+        temp[7]= volume->at(zPlus1, yPlus1, xPlus1); 
+    }
 
-                        z0 = (z0 + cubeSize) % cubeSize;
-                        z1 = (z1 + cubeSize) % cubeSize;
-                        z2 = (z2 + cubeSize) % cubeSize;
-                        z3 = (z3 + cubeSize) % cubeSize;                    
+    void computeCoefficients(
+      const VolumeT *volume,
+      const VolumeT *dx,
+      const VolumeT *dy,
+      const VolumeT *dz,
+      const VolumeT *dxy,
+      const VolumeT *dxz,
+      const VolumeT *dyz,
+      const VolumeT *dxyz) {
+          T temp[64];
 
-                        //values of f(x,y,z) at each corner.
-                        Y(0)= this->volume->at(z1, y1, x1);
-                        Y(1)= this->volume->at(z2, y1, x1);
-                        Y(2)= this->volume->at(z1, y1, x2);
-                        Y(3)= this->volume->at(z2, y1, x2);
-                        Y(4)= this->volume->at(z1, y2, x1);
-                        Y(5)= this->volume->at(z2, y2, x1);
-                        Y(6)= this->volume->at(z1, y2, x2);
-                        Y(7)= this->volume->at(z2, y2, x2);
+          Eigen::Map< Eigen::Matrix<T, 64, 1> > tempVector(temp);
 
-                        //values of df/dx
-                        Y(8)= ((this->volume->at(z2, y1, x1)-this->volume->at(z0, y1, x1))/2.);
-                        Y(9)= ((this->volume->at(z3, y1, x1)-this->volume->at(z1, y1, x1))/2.);
-                        Y(10) = ((this->volume->at(z2, y1, x2)-this->volume->at(z0, y1, x2))/2.);
-                        Y(11) = ((this->volume->at(z3, y1, x2)-this->volume->at(z1, y1, x2))/2.);
-                        Y(12) = ((this->volume->at(z2, y2, x1)-this->volume->at(z0, y2, x1))/2.);
-                        Y(13) = ((this->volume->at(z3, y2, x1)-this->volume->at(z1, y2, x1))/2.);
-                        Y(14) = ((this->volume->at(z2, y2, x2)-this->volume->at(z0, y2, x2))/2.);
-                        Y(15) = ((this->volume->at(z3, y2, x2)-this->volume->at(z1, y2, x2))/2.);
+          const size_t totalPoints =
+            volume->cubeSize * volume->cubeSize * volume->cubeSize;
 
-                        //values of df/dy
-                        Y(16) = ((this->volume->at(z1, y1, x2)-this->volume->at(z1, y1, x0))/2.);
-                        Y(17) = ((this->volume->at(z2, y1, x2)-this->volume->at(z2, y1, x0))/2.);
-                        Y(18) = ((this->volume->at(z1, y1, x3)-this->volume->at(z1, y1, x1))/2.);
-                        Y(19) = ((this->volume->at(z2, y1, x3)-this->volume->at(z2, y1, x1))/2.);
-                        Y(20) = ((this->volume->at(z1, y2, x2)-this->volume->at(z1, y2, x0))/2.);
-                        Y(21) = ((this->volume->at(z2, y2, x2)-this->volume->at(z2, y2, x0))/2.);
-                        Y(22) = ((this->volume->at(z1, y2, x3)-this->volume->at(z1, y2, x1))/2.);
-                        Y(23) = ((this->volume->at(z2, y2, x3)-this->volume->at(z2, y2, x1))/2.);
+          Eigen::Matrix<T, 64, Eigen::Dynamic> tempMat(64, totalPoints);
 
-                        //values of df/df
-                        Y(24) = ((this->volume->at(z1, y2, x1)-this->volume->at(z1, y0, x1))/2.);
-                        Y(25) = ((this->volume->at(z2, y2, x1)-this->volume->at(z2, y0, x1))/2.);
-                        Y(26) = ((this->volume->at(z1, y2, x2)-this->volume->at(z1, y0, x2))/2.);
-                        Y(27) = ((this->volume->at(z2, y2, x2)-this->volume->at(z2, y0, x2))/2.);
-                        Y(28) = ((this->volume->at(z1, y3, x1)-this->volume->at(z1, y1, x1))/2.);
-                        Y(29) = ((this->volume->at(z2, y3, x1)-this->volume->at(z2, y1, x1))/2.);
-                        Y(30) = ((this->volume->at(z1, y3, x2)-this->volume->at(z1, y1, x2))/2.);
-                        Y(31) = ((this->volume->at(z2, y3, x2)-this->volume->at(z2, y1, x2))/2.);
+          size_t tempMatrixOffset = 0;
 
-                        //values of d2f/dxdy
-                        Y(32) = ((this->volume->at(z2, y1, x2)-this->volume->at(z2, y1, x0)-this->volume->at(z0, y1, x2)+this->volume->at(z0, y1, x0))/4.);
-                        Y(33) = ((this->volume->at(z3, y1, x2)-this->volume->at(z3, y1, x0)-this->volume->at(z1, y1, x2)+this->volume->at(z1, y1, x0))/4.);
-                        Y(34) = ((this->volume->at(z2, y1, x3)-this->volume->at(z2, y1, x1)-this->volume->at(z0, y1, x3)+this->volume->at(z0, y1, x1))/4.);
-                        Y(35) = ((this->volume->at(z3, y1, x3)-this->volume->at(z3, y1, x1)-this->volume->at(z1, y1, x3)+this->volume->at(z1, y1, x1))/4.);
-                        Y(36) = ((this->volume->at(z2, y2, x2)-this->volume->at(z2, y2, x0)-this->volume->at(z0, y2, x2)+this->volume->at(z0, y2, x0))/4.);
-                        Y(37) = ((this->volume->at(z3, y2, x2)-this->volume->at(z3, y2, x0)-this->volume->at(z1, y2, x2)+this->volume->at(z1, y2, x0))/4.);
-                        Y(38) = ((this->volume->at(z2, y2, x3)-this->volume->at(z2, y2, x1)-this->volume->at(z0, y2, x3)+this->volume->at(z0, y2, x1))/4.);
-                        Y(39) = ((this->volume->at(z3, y2, x3)-this->volume->at(z3, y2, x1)-this->volume->at(z1, y2, x3)+this->volume->at(z1, y2, x1))/4.);
+          for(int z = 0; z < volume->cubeSize; ++z){
+            for(int y = 0; y < volume->cubeSize; ++y){
+              for(int x = 0; x < volume->cubeSize; ++x, tempMatrixOffset++){
+                //values of f(x,y,z) at each corner.
+                constructCoeffVectorSubpart(temp, volume, z, y, x);
 
-                        //values of d2f/dxdf
-                        Y(40) = ((this->volume->at(z2, y2, x1)-this->volume->at(z2, y0, x1)-this->volume->at(z0, y2, x1)+this->volume->at(z0, y0, x1))/4.);
-                        Y(41) = ((this->volume->at(z3, y2, x1)-this->volume->at(z3, y0, x1)-this->volume->at(z1, y2, x1)+this->volume->at(z1, y0, x1))/4.);
-                        Y(42) = ((this->volume->at(z2, y2, x2)-this->volume->at(z2, y0, x2)-this->volume->at(z0, y2, x2)+this->volume->at(z0, y0, x2))/4.);
-                        Y(43) = ((this->volume->at(z3, y2, x2)-this->volume->at(z3, y0, x2)-this->volume->at(z1, y2, x2)+this->volume->at(z1, y0, x2))/4.);
-                        Y(44) = ((this->volume->at(z2, y3, x1)-this->volume->at(z2, y1, x1)-this->volume->at(z0, y3, x1)+this->volume->at(z0, y1, x1))/4.);
-                        Y(45) = ((this->volume->at(z3, y3, x1)-this->volume->at(z3, y1, x1)-this->volume->at(z1, y3, x1)+this->volume->at(z1, y1, x1))/4.);
-                        Y(46) = ((this->volume->at(z2, y3, x2)-this->volume->at(z2, y1, x2)-this->volume->at(z0, y3, x2)+this->volume->at(z0, y1, x2))/4.);
-                        Y(47) = ((this->volume->at(z3, y3, x2)-this->volume->at(z3, y1, x2)-this->volume->at(z1, y3, x2)+this->volume->at(z1, y1, x2))/4.);
+                //values of df/dx
+                constructCoeffVectorSubpart(temp+8, dx, z, y, x);
 
-                        //values of d2f/dydf
-                        Y(48) = ((this->volume->at(z1, y2, x2)-this->volume->at(z1, y2, x0)-this->volume->at(z1, y0, x2)+this->volume->at(z1, y0, x0))/4.);
-                        Y(49) = ((this->volume->at(z2, y2, x2)-this->volume->at(z2, y2, x0)-this->volume->at(z2, y0, x2)+this->volume->at(z2, y0, x0))/4.);
-                        Y(50) = ((this->volume->at(z1, y2, x3)-this->volume->at(z1, y2, x1)-this->volume->at(z1, y0, x3)+this->volume->at(z1, y0, x1))/4.);
-                        Y(51) = ((this->volume->at(z2, y2, x3)-this->volume->at(z2, y2, x1)-this->volume->at(z2, y0, x3)+this->volume->at(z2, y0, x1))/4.);
-                        Y(52) = ((this->volume->at(z1, y3, x2)-this->volume->at(z1, y3, x0)-this->volume->at(z1, y1, x2)+this->volume->at(z1, y1, x0))/4.);
-                        Y(53) = ((this->volume->at(z2, y3, x2)-this->volume->at(z2, y3, x0)-this->volume->at(z2, y1, x2)+this->volume->at(z2, y1, x0))/4.);
-                        Y(54) = ((this->volume->at(z1, y3, x3)-this->volume->at(z1, y3, x1)-this->volume->at(z1, y1, x3)+this->volume->at(z1, y1, x1))/4.);
-                        Y(55) = ((this->volume->at(z2, y3, x3)-this->volume->at(z2, y3, x1)-this->volume->at(z2, y1, x3)+this->volume->at(z2, y1, x1))/4.);
+                //values of df/dy
+                constructCoeffVectorSubpart(temp+16, dy, z, y, x);
 
-                        //values of d3f/dxdydf
-                        Y(56) = ((this->volume->at(z2, y2, x2)-this->volume->at(z2, y2, x0)-this->volume->at(z0, y2, x2)+this->volume->at(z0, y2, x0))
-                                  -(this->volume->at(z2, y0, x2)-this->volume->at(z2, y0, x0)-this->volume->at(z0, y0, x2)+this->volume->at(z0, y0, x0)))/8.;
-                        Y(57) = ((this->volume->at(z3, y2, x2)-this->volume->at(z3, y2, x0)-this->volume->at(z1, y2, x2)+this->volume->at(z1, y2, x0))
-                                  -(this->volume->at(z3, y0, x2)-this->volume->at(z3, y0, x0)-this->volume->at(z1, y0, x2)+this->volume->at(z1, y0, x0)))/8.;
-                        Y(58) = ((this->volume->at(z2, y2, x3)-this->volume->at(z2, y2, x1)-this->volume->at(z0, y2, x3)+this->volume->at(z0, y2, x1))
-                                  -(this->volume->at(z2, y0, x3)-this->volume->at(z2, y0, x1)-this->volume->at(z0, y0, x3)+this->volume->at(z0, y0, x1)))/8.;
-                        Y(59) = ((this->volume->at(z3, y2, x3)-this->volume->at(z3, y2, x1)-this->volume->at(z1, y2, x3)+this->volume->at(z1, y2, x1))
-                                  -(this->volume->at(z3, y0, x3)-this->volume->at(z3, y0, x1)-this->volume->at(z1, y0, x3)+this->volume->at(z1, y0, x1)))/8.;
+                //values of df/dz
+                constructCoeffVectorSubpart(temp+24, dz, z, y, x);
 
-                        Y(60) = ((this->volume->at(z2, y3, x2)-this->volume->at(z2, y3, x0)-this->volume->at(z0, y3, x2)+this->volume->at(z0, y3, x0))
-                                  -(this->volume->at(z2, y1, x2)-this->volume->at(z2, y1, x0)-this->volume->at(z0, y1, x2)+this->volume->at(z0, y1, x0)))/8.;
-                        Y(61) = ((this->volume->at(z3, y3, x2)-this->volume->at(z3, y3, x0)-this->volume->at(z1, y3, x2)+this->volume->at(z1, y3, x0))
-                                  -(this->volume->at(z3, y1, x2)-this->volume->at(z3, y1, x0)-this->volume->at(z1, y1, x2)+this->volume->at(z1, y1, x0)))/8.;
-                        Y(62) = ((this->volume->at(z2, y3, x3)-this->volume->at(z2, y3, x1)-this->volume->at(z0, y3, x3)+this->volume->at(z0, y3, x1))
-                                  -(this->volume->at(z2, y1, x3)-this->volume->at(z2, y1, x1)-this->volume->at(z0, y1, x3)+this->volume->at(z0, y1, x1)))/8.;
-                        Y(63) = ((this->volume->at(z3, y3, x3)-this->volume->at(z3, y3, x1)-this->volume->at(z1, y3, x3)+this->volume->at(z1, y3, x1))
-                                  -(this->volume->at(z3, y1, x3)-this->volume->at(z3, y1, x1)-this->volume->at(z1, y1, x3)+this->volume->at(z1, y1, x1)))/8.;
+                //values of d2f/dxdy
+                constructCoeffVectorSubpart(temp+32, dxy, z, y, x);
 
-                        // compute the index to the derivatives vector from loop indicies i, j and k
-                        int idx = derives_shape * (derives_shape * y + x) + z;
-                        // cout << "idx: " << idx << endl;
-                        // store the derivatives
-                        derivatives[idx] = X_inv*Y;
-                    }
-                }
+                //values of d2f/dxdf
+                constructCoeffVectorSubpart(temp+40, dxz, z, y, x);
+
+                //values of d2f/dydf
+                constructCoeffVectorSubpart(temp+48, dyz, z, y, x);
+
+                //values of d3f/dxdydf
+                constructCoeffVectorSubpart(temp+56, dxyz, z, y, x);
+
+                // store the new coefficients in the temp matrix
+                tempMat.col(tempMatrixOffset) = tempVector;
+              }
             }
+          }
+
+          // having made the argument vectors for all the points,
+          // now apply the X_inv matrix to all of them to get the
+          // coefficient vectors used for interpolation
+          coefficients.noalias() = X_inv * tempMat;
+    }
+ 
+
+  public:
+    TricubicInterpolator(
+      const VolumeT *volume,
+      const VolumeT *dx,
+      const VolumeT *dy,
+      const VolumeT *dz,
+      const VolumeT *dxy,
+      const VolumeT *dxz,
+      const VolumeT *dyz,
+      const VolumeT *dxyz) :
+        Interpolator3D<VolumeT, CoordT>(volume),
+        X_inv(generate_X_inv()),
+        coefficientsInner(volume->totalPoints * 64),
+        coefficients(&(coefficientsInner[0]), 64, volume->totalPoints),
+        cubeSize(volume->cubeSize)
+        {
+          computeCoefficients(volume, dx, dy, dz, dxy, dxz, dyz, dxyz);
         }
 
-    void fill_target_Y(const T z, const T y, const T x) const {
+    void fill_target_Y(T* target_YArr, const T z, const T y, const T x) const {
         T xSq = x*x;
 
         target_YArr[0] = (T) 1.0;
@@ -260,7 +214,6 @@ class TricubicInterpolator :
         target_YArr[14] = target_YArr[10] * y; // x*x*y*y*y
         target_YArr[15] = target_YArr[11] * y; // x*x*x*y*y*y
         
-
         target_YArr[16] = target_YArr[0] * z; // z
         target_YArr[17] = target_YArr[1] * z; // x*z
         target_YArr[18] = target_YArr[2] * z; // x*x*z
@@ -313,46 +266,37 @@ class TricubicInterpolator :
         target_YArr[63] = target_YArr[47] * z; // x*x*x*y*y*y*z*z*z;
     }
 
-    std::vector<Vector64T>* get_derivatives(){
-        return &derivatives;
-    }
-
     virtual T interp(
-        const coordT z,
-        const coordT y,
-        const coordT x) const {
+        const CoordT z,
+        const CoordT y,
+        const CoordT x) const {
 
-        int x1 = z;
-        int y1 = y;
-        int z1 = x;
+        CoordT xInt, yInt, zInt;
+        CoordT xFrac, yFrac, zFrac;
 
-        fill_target_Y(y-y1, x-z1, z-x1);
-        return target_YVec.dot(derivatives[derives_shape * (derives_shape*(y1+15) + (x1+15)) + (z1+15)]);
-    }
-    virtual Matrix3X compute_axis_derivatives(){
-            axis_derivatives.resize(3, cubeSize*cubeSize*cubeSize);
-            int idx = 0;
+        xFrac = std::modf(x, &xInt);
+        yFrac = std::modf(y, &yInt);
+        zFrac = std::modf(z, &zInt);
+   
+        // ideally we don't want to allocate these on every call to interp
+        // but for right now this ensures the method is thread-safe
+        CoordT target_YArr[64];
+        const Eigen::Map< Eigen::Matrix<T, 64, 1> > target_YVec(target_YArr);
 
-            for(int z = 0; z < cubeSize; ++z){
-                for(int y = 0; y < cubeSize; ++y){
-                    for(int x = 0; x < cubeSize; ++x){
-                        axis_derivatives.col(idx) << (derivatives[derives_shape * (derives_shape*(y+15) + (z+15)) + (x+15)])(4), 
-                                            (derivatives[derives_shape * (derives_shape*(y+15) + (z+15)) + (x+15)])(16),
-                                            (derivatives[derives_shape * (derives_shape*(y+15) + (z+15)) + (x+15)])(1);
-
-                        idx++;
-                    }
-                }
-            }
-        return axis_derivatives;
+        fill_target_Y(target_YArr, zFrac, yFrac, xFrac);
+        return target_YVec.dot(
+          coefficients.col(
+            (((size_t) zInt) * cubeSize + ((size_t) yInt)) *
+              cubeSize + ((size_t) xInt)
+            )
+          );
     }
 
   protected:
-    const MatrixXT X_inv;
-    std::vector<Vector64T> derivatives;
-    mutable T target_YArr[64];
-    const Map<Vector64T> target_YVec;
-    Matrix3X axis_derivatives;
+    const Matrix_64_64_T X_inv;
+    std::vector<T> coefficientsInner;
+    Eigen::Map< Matrix_64_X_T > coefficients;
+    const size_t cubeSize;
 };
 
 #endif

@@ -2,12 +2,16 @@
 
 #include "TricubicInterpolator.h"
 
+#include "Interpolator3D_tests.h"
+
 #include <vector>
 #include <complex>
 
 TEST_CASE("a tricubic interpolator can be created from a volume") {
     //typedef std::complex<float> make dataT;
     typedef float dataT;
+    typedef Volume<dataT, std::vector<dataT>, float > VolumeT;
+    typedef TricubicInterpolator<VolumeT, float> InterpolatorT;
 
     const size_t cubeSize = 10;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
@@ -18,18 +22,17 @@ TEST_CASE("a tricubic interpolator can be created from a volume") {
         initialData[i] = i; 
     }
 
-    typedef Volume<dataT, std::vector<dataT> > VolumeT;
     VolumeT volume(initialData, cubeSize);
 
-    TricubicInterpolator<VolumeT, float> interpolator(&volume);
+    VolumeT dx(cubeSize);
+    VolumeT dy(cubeSize);
+    VolumeT dz(cubeSize);
+    VolumeT dxy(cubeSize);
+    VolumeT dxz(cubeSize);
+    VolumeT dyz(cubeSize);
+    VolumeT dxyz(cubeSize);
 
-    SECTION("and all the points are returned when interpolated exactly") { 
-        for(size_t z = 0; z < cubeSize; z++) {
-            for(size_t y = 0; y < cubeSize; y++) {
-                for(size_t x = 0; x < cubeSize; x++) {
-                    REQUIRE(interpolator.interp(z, y, x) == volume.at(z, y, x));
-                }
-            }
-        }
-    }
+    InterpolatorT interpolator(&volume, &dx, &dy, &dz, &dxy, &dxz, &dyz, &dxyz);
+
+    InterpolatorTests<InterpolatorT>::tests(&interpolator, &volume); 
 }

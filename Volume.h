@@ -1,6 +1,7 @@
 #ifndef Volume_h
 #define Volume_h
 
+
 template <
     typename _T,
     typename _StorageT,
@@ -12,11 +13,20 @@ class Volume {
     typedef _CoordT CoordT;
 
     Volume(
-        const StorageT data,
+        StorageT data,
         const size_t cubeSize) :
         cubeSize(cubeSize),
+        totalPoints(cubeSize * cubeSize * cubeSize),
         cubeCenter(cubeCenterFromCubeSize(cubeSize)),
         data(data),
+        maxCubeIndex(cubeSize - 1) {}
+
+    Volume(
+        const size_t cubeSize) :
+        cubeSize(cubeSize),
+        totalPoints(cubeSize * cubeSize * cubeSize),
+        cubeCenter(cubeCenterFromCubeSize(cubeSize)),
+        data(totalPoints),
         maxCubeIndex(cubeSize - 1) {}
 
     const T& at(const size_t z, const size_t y, const size_t x) const {
@@ -65,6 +75,7 @@ class Volume {
 
   public:
     const size_t cubeSize;
+    const size_t totalPoints;
     const CoordT cubeCenter;
 
   protected:
