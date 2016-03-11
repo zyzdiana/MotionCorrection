@@ -48,7 +48,6 @@ class Volume {
         return CoordT(center, center, center);
     }
 
-
   public:
     const size_t cubeSize;
     const CoordT cubeCenter;
@@ -56,6 +55,7 @@ class Volume {
   protected:
     const int maxCubeIndex;
     const StorageT data;
+    const StorageT mask_weights;
 };
 
 #endif
