@@ -1,6 +1,7 @@
 #include "catch.hpp"
 
 #include "TricubicInterpolator.h"
+#include "CentralDifferenceDifferentiator.h"
 
 #include "VolumeAtAddressable.h"
 
@@ -25,13 +26,33 @@ TEST_CASE("a tricubic interpolator can be created from a volume") {
 
     VolumeT volume(cubeSize, initialData);
 
+    CentralDifferencesDifferentiator<VolumeT> volDiffer(&volume);
     VolumeT dx(cubeSize, cubeVectorLength);
+    volDiffer.xDerivative(&dx);
+
     VolumeT dy(cubeSize, cubeVectorLength);
+    volDiffer.yDerivative(&dy);
+
     VolumeT dz(cubeSize, cubeVectorLength);
+    volDiffer.zDerivative(&dz);
+
+    CentralDifferencesDifferentiator<VolumeT> dxDiffer(&dx);
+   
     VolumeT dxy(cubeSize, cubeVectorLength);
+    dxDiffer.yDerivative(&dxy);
+    
     VolumeT dxz(cubeSize, cubeVectorLength);
+    dxDiffer.zDerivative(&dxz);
+
+    CentralDifferencesDifferentiator<VolumeT> dyDiffer(&dy);
+
     VolumeT dyz(cubeSize, cubeVectorLength);
+    dyDiffer.zDerivative(&dxz);
+
+    CentralDifferencesDifferentiator<VolumeT> dxyDiffer(&dxy);
+    
     VolumeT dxyz(cubeSize, cubeVectorLength);
+    dxyDiffer.zDerivative(&dxz);
 
     InterpolatorT interpolator(&volume, &dx, &dy, &dz, &dxy, &dxz, &dyz, &dxyz);
 
@@ -58,13 +79,33 @@ TEST_CASE(
 
     VolumeT volume(cubeSize, initialData);
 
+    CentralDifferencesDifferentiator<VolumeT> volDiffer(&volume);
     VolumeT dx(cubeSize, cubeVectorLength);
+    volDiffer.xDerivative(&dx);
+
     VolumeT dy(cubeSize, cubeVectorLength);
+    volDiffer.yDerivative(&dy);
+
     VolumeT dz(cubeSize, cubeVectorLength);
+    volDiffer.zDerivative(&dz);
+
+    CentralDifferencesDifferentiator<VolumeT> dxDiffer(&dx);
+   
     VolumeT dxy(cubeSize, cubeVectorLength);
+    dxDiffer.yDerivative(&dxy);
+    
     VolumeT dxz(cubeSize, cubeVectorLength);
+    dxDiffer.zDerivative(&dxz);
+
+    CentralDifferencesDifferentiator<VolumeT> dyDiffer(&dy);
+
     VolumeT dyz(cubeSize, cubeVectorLength);
+    dyDiffer.zDerivative(&dxz);
+
+    CentralDifferencesDifferentiator<VolumeT> dxyDiffer(&dxy);
+    
     VolumeT dxyz(cubeSize, cubeVectorLength);
+    dxyDiffer.zDerivative(&dxz);
 
     InterpolatorT interpolator(&volume, &dx, &dy, &dz, &dxy, &dxz, &dyz, &dxyz);
 
