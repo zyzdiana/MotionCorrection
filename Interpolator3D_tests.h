@@ -5,9 +5,10 @@ template <typename InterpolatorT>
 class InterpolatorTests {
   public:
     typedef typename InterpolatorT::VolumeT VolumeT;
+    typedef typename InterpolatorT::CoordT CoordT;
     typedef typename InterpolatorT::T T;
   
-    static void tests(
+    static void identity_tests(
       const InterpolatorT *interpolator,
       const VolumeT *volume) {
 
@@ -23,7 +24,26 @@ class InterpolatorTests {
               }
           }
       }
-    
+    }
+   
+    static void constant_tests(
+      const InterpolatorT *interpolator,
+      const VolumeT *volume,
+      const T constValue) {
+
+      const CoordT cubeSize = volume->cubeSize;
+
+      const CoordT stepSize = 0.25;
+
+      SECTION("and interpolating any point returns the constant value") { 
+          for(CoordT z = 0; z < cubeSize; z += stepSize) {
+              for(CoordT y = 0; y < cubeSize; y += stepSize) {
+                  for(CoordT x = 0; x < cubeSize; x += stepSize) {
+                      REQUIRE(constValue == interpolator->interp(z, y, x));
+                  }
+              }
+          }
+      }
     }
 };
 
