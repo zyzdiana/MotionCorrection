@@ -8,7 +8,7 @@ template <
 class TrilinearInterpolator :
     public Interpolator3D<VolumeT, CoordT> {
   public:
-    typedef typename VolumeT::T T;
+    typedef typename VolumeT::value_type T;
 
     TrilinearInterpolator(const VolumeT *volume) :
         Interpolator3D<VolumeT, CoordT>(volume) {}

@@ -2,6 +2,8 @@
 
 #include "TricubicInterpolator.h"
 
+#include "VolumeAtAddressable.h"
+
 #include "Interpolator3D_tests.h"
 
 #include <vector>
@@ -10,7 +12,7 @@
 TEST_CASE("a tricubic interpolator can be created from a volume") {
     //typedef std::complex<float> make dataT;
     typedef float dataT;
-    typedef Volume<dataT, std::vector<dataT>, float > VolumeT;
+    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
     typedef TricubicInterpolator<VolumeT, float> InterpolatorT;
 
     const size_t cubeSize = 10;
@@ -22,15 +24,15 @@ TEST_CASE("a tricubic interpolator can be created from a volume") {
         initialData[i] = i; 
     }
 
-    VolumeT volume(initialData, cubeSize);
+    VolumeT volume(cubeSize, initialData);
 
-    VolumeT dx(cubeSize);
-    VolumeT dy(cubeSize);
-    VolumeT dz(cubeSize);
-    VolumeT dxy(cubeSize);
-    VolumeT dxz(cubeSize);
-    VolumeT dyz(cubeSize);
-    VolumeT dxyz(cubeSize);
+    VolumeT dx(cubeSize, cubeVectorLength);
+    VolumeT dy(cubeSize, cubeVectorLength);
+    VolumeT dz(cubeSize, cubeVectorLength);
+    VolumeT dxy(cubeSize, cubeVectorLength);
+    VolumeT dxz(cubeSize, cubeVectorLength);
+    VolumeT dyz(cubeSize, cubeVectorLength);
+    VolumeT dxyz(cubeSize, cubeVectorLength);
 
     InterpolatorT interpolator(&volume, &dx, &dy, &dz, &dxy, &dxz, &dyz, &dxyz);
 

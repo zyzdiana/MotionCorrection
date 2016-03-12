@@ -3,8 +3,6 @@
 
 #include "Interpolator3D.h"
 
-#include "Volume.h"
-
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
@@ -20,7 +18,7 @@ class TricubicInterpolator :
   public Interpolator3D<VolumeT, CoordT> {
 
   public:
-    typedef typename VolumeT::T T;
+    typedef typename VolumeT::value_type T;
     typedef Eigen::Matrix< T, 64, 64 >  Matrix_64_64_T;
     typedef Eigen::Matrix< T, 64, Eigen::Dynamic >  Matrix_64_X_T;
 

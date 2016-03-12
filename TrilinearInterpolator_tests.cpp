@@ -1,7 +1,8 @@
 #include "catch.hpp"
 
 #include "TrilinearInterpolator.h"
-#include "Volume.h"
+
+#include "VolumeAtAddressable.h"
 
 #include "Interpolator3D_tests.h"
 
@@ -10,7 +11,7 @@
 
 TEST_CASE("a trilinear interpolator can be created from a volume") {
     typedef std::complex<float> dataT;
-    typedef Volume<dataT, std::vector<dataT>, float > VolumeT;
+    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
     typedef TrilinearInterpolator<VolumeT, float> InterpolatorT;
 
     const size_t cubeSize = 10;
@@ -22,7 +23,7 @@ TEST_CASE("a trilinear interpolator can be created from a volume") {
         initialData[i] = i; 
     }
 
-    VolumeT volume(initialData, cubeSize);
+    VolumeT volume(cubeSize, initialData);
 
     InterpolatorT interpolator(&volume);
 

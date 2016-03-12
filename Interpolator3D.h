@@ -7,7 +7,7 @@ template <
 class Interpolator3D {
   public:
     typedef _VolumeT VolumeT;
-    typedef typename VolumeT::T T;
+    typedef typename _VolumeT::value_type T;
 
     const int cubeSize;
     Interpolator3D(const VolumeT *volume) :
