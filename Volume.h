@@ -1,30 +1,47 @@
 #ifndef Volume_h
 #define Volume_h
 
-#include <Eigen/Dense>
 
 template <
     typename _T,
-    typename _StorageT >
+    typename _StorageT,
+    typename _CoordT>
 class Volume {
   public:
     typedef _T T;
     typedef _StorageT StorageT;
-    typedef Eigen::Matrix<T,3,1> CoordT;
+    typedef _CoordT CoordT;
 
     Volume(
-        const StorageT data,
+        StorageT data,
         const size_t cubeSize) :
         cubeSize(cubeSize),
+        totalPoints(cubeSize * cubeSize * cubeSize),
         cubeCenter(cubeCenterFromCubeSize(cubeSize)),
         data(data),
         maxCubeIndex(cubeSize - 1) {}
 
-    T at(const size_t z, const size_t y, const size_t x) const {
+    Volume(
+        const size_t cubeSize) :
+        cubeSize(cubeSize),
+        totalPoints(cubeSize * cubeSize * cubeSize),
+        cubeCenter(cubeCenterFromCubeSize(cubeSize)),
+        data(totalPoints),
+        maxCubeIndex(cubeSize - 1) {}
+
+    const T& at(const size_t z, const size_t y, const size_t x) const {
+        return at((z * cubeSize + y) * cubeSize + x);
+    }
+    
+    T& at(const size_t z, const size_t y, const size_t x) {
         return at((z * cubeSize + y) * cubeSize + x);
     }
 
-    T at(const size_t index) const {
+    const T& at(const size_t index) const {
+        return data[index]; 
+    }
+    
+    T& at(const size_t index) {
         return data[index]; 
     }
     
@@ -40,22 +57,29 @@ class Volume {
         
         return index;
     }
+    
+    int wrapIndex(const int index) const {
+        return (index + cubeSize) % cubeSize;
+    }
 
   protected:
-    static CoordT cubeCenterFromCubeSize(const float cubeSize) {
-        T center = ((T) cubeSize)/(T)2.0 - (T)0.5;
+    template <typename TripleT>
+    TripleT cubeCenterAsTriple() const {
+      return TripleT(cubeCenter, cubeCenter, cubeCenter); 
+    }
 
-        return CoordT(center, center, center);
+    static CoordT cubeCenterFromCubeSize(const float cubeSize) {
+        return ((CoordT) cubeSize)/(CoordT)2.0 - (CoordT)0.5;
     }
 
   public:
     const size_t cubeSize;
+    const size_t totalPoints;
     const CoordT cubeCenter;
 
   protected:
     const int maxCubeIndex;
-    const StorageT data;
-    const StorageT mask_weights;
+    StorageT data;
 };
 
 #endif

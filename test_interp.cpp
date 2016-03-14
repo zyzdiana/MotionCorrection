@@ -5,6 +5,7 @@
 #include <vector>
 #include <complex>
 #include <string>
+#include <sstream>
 #include <time.h>
 #include <sys/time.h>
 
@@ -91,7 +92,12 @@ int main(){
     cout << "Wall Time Cubic Interpolation = " << wall1 - wall0 << endl;
     cout << "CPU Time Cubic Interpolation = " << cpu1  - cpu0  << endl;
 
-    string path_ref = "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/cubic_Vol1_" + std::to_string(int(theta)) + std::to_string(int(wx)) + std::to_string(int(wy)) + std::to_string(int(wz)) + ".dat";
+    stringstream path_coords;
+    path_coords << (int) theta << (int) wx << (int) wy << (int) wz;
+
+    string path_ref =
+      "/Users/zyzdiana/Dropbox/THESIS/C++_Test_Code/cubic_Vol1_" +
+      path_coords.str() + ".dat";
     cout << path_ref << endl;
     vector1D vol1_ref = ReadFile<float>::read_reference_volume(path_ref, vector_length);
     for (int i = 0; i < 32*32*32; ++i){

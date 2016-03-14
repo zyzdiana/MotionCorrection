@@ -7,7 +7,8 @@
 
 TEST_CASE("a volume of complex floats can be created from a vector") {
     typedef std::complex<float> dataT;
-   
+    typedef Volume<dataT, std::vector<dataT>, float> VolumeT; 
+
     const size_t cubeSize = 10;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
 
@@ -17,7 +18,7 @@ TEST_CASE("a volume of complex floats can be created from a vector") {
         initialData[i] = i; 
     }
 
-    Volume<dataT, std::vector<dataT> > volume(initialData, cubeSize);
+    VolumeT volume(initialData, cubeSize);
 
     SECTION("and all the values can be read back linearly") {
         for(size_t i = 0; i < cubeVectorLength; i++) {

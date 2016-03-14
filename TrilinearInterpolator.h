@@ -2,30 +2,21 @@
 #define TrilinearInterpolator_h
 
 #include "Interpolator3D.h"
-using namespace Eigen;
 template <
     typename VolumeT,
-    typename coordT>
+    typename CoordT>
 class TrilinearInterpolator :
-    public Interpolator3D<VolumeT, coordT> {
+    public Interpolator3D<VolumeT, CoordT> {
   public:
     typedef typename VolumeT::T T;
-    typedef Matrix< T, 3, 1 > CoordT;
-
-    const int derives_shape;
-    const int cubeSize;
-    const CoordT cubeCenter;
 
     TrilinearInterpolator(const VolumeT *volume) :
-        Interpolator3D<VolumeT, coordT>(volume),
-        derives_shape(volume->cubeSize),
-        cubeSize(volume->cubeSize),
-        cubeCenter(volume->cubeCenter) {}
+        Interpolator3D<VolumeT, CoordT>(volume) {}
 
     virtual T interp(
-        const coordT z,
-        const coordT y,
-        const coordT x) const {
+        const CoordT z,
+        const CoordT y,
+        const CoordT x) const {
         
         // mdt Feb 17/16
         // casting a float to int always takes the floor of the float
@@ -36,22 +27,23 @@ class TrilinearInterpolator :
         int z0 = z;
         int z1 = z0 + 1;
 
-        // clip range
-        x0 = this->volume->clipIndex(x0);
-        x1 = this->volume->clipIndex(x1);
-        y0 = this->volume->clipIndex(y0);
-        y1 = this->volume->clipIndex(y1);
-        z0 = this->volume->clipIndex(z0);
-        z1 = this->volume->clipIndex(z1);
+        // mdt Mar 10/16
+        // wrap range
+        x0 = this->volume->wrapIndex(x0);
+        x1 = this->volume->wrapIndex(x1);
+        y0 = this->volume->wrapIndex(y0);
+        y1 = this->volume->wrapIndex(y1);
+        z0 = this->volume->wrapIndex(z0);
+        z1 = this->volume->wrapIndex(z1);
         
         //define some coefficients
-        const coordT xd = x - (coordT) x0;
-        const coordT yd = y - (coordT) y0;
-        const coordT zd = z - (coordT) z0;
+        const CoordT xd = x - (CoordT) x0;
+        const CoordT yd = y - (CoordT) y0;
+        const CoordT zd = z - (CoordT) z0;
 
-        const coordT oneMinusXd = ((coordT) 1.0) - xd;
-        const coordT oneMinusYd = ((coordT) 1.0) - yd;
-        const coordT oneMinusZd = ((coordT) 1.0) - zd;
+        const CoordT oneMinusXd = ((CoordT) 1.0) - xd;
+        const CoordT oneMinusYd = ((CoordT) 1.0) - yd;
+        const CoordT oneMinusZd = ((CoordT) 1.0) - zd;
 
         //set up for the bilinear interpolation
         const T C00 = this->volume->at(z0, y0, x0)*oneMinusXd + this->volume->at(z0, y0, x1)*xd;

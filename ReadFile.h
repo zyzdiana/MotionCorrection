@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <string>
+#include <sstream>
 #include <iostream>
 #include <fcntl.h>
 #include <complex>
@@ -26,7 +27,9 @@ class ReadFile{
         int bytesRead;
 
         for (int i = 0; i < num_slice; ++i){
-            string slice_path = path+"_slice_" + to_string(i) +".dat";
+            std::stringstream ss;
+            ss << i;
+            string slice_path = path+"_slice_" + ss.str() +".dat";
             bytesRead = BinaryFile<dataT>::read(&slice, slice_path);
             for(int j = 0;j < num_slice; ++j){
                 for (int k = 0;k < num_slice; ++k){
