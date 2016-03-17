@@ -1,7 +1,8 @@
 #include "catch.hpp"
 
 #include "TrilinearInterpolator.h"
-#include "Volume.h"
+
+#include "VolumeAtAddressable.h"
 
 #include "Interpolator3D_tests.h"
 
@@ -10,7 +11,7 @@
 
 TEST_CASE("a trilinear interpolator can be created from a volume") {
     typedef std::complex<float> dataT;
-    typedef Volume<dataT, std::vector<dataT>, float > VolumeT;
+    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
     typedef TrilinearInterpolator<VolumeT, float> InterpolatorT;
 
     const size_t cubeSize = 10;
@@ -22,11 +23,11 @@ TEST_CASE("a trilinear interpolator can be created from a volume") {
         initialData[i] = i; 
     }
 
-    VolumeT volume(initialData, cubeSize);
+    VolumeT volume(cubeSize, initialData);
 
     InterpolatorT interpolator(&volume);
 
-    InterpolatorTests<InterpolatorT>::tests(&interpolator, &volume); 
+    InterpolatorTests<InterpolatorT>::identity_tests(&interpolator, &volume); 
 
     SECTION("and all the points are averaged when interpolated in x") { 
         for(size_t z = 0; z < cubeSize; z++) {
@@ -69,4 +70,30 @@ TEST_CASE("a trilinear interpolator can be created from a volume") {
             }
         }
     }
+}
+
+TEST_CASE(
+  "a trilinear interpolator can be created from a constant-valued volume") {
+    typedef std::complex<float> dataT;
+    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
+    typedef TrilinearInterpolator<VolumeT, float> InterpolatorT;
+
+    const size_t cubeSize = 10;
+    const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
+
+    std::vector<dataT> initialData(cubeVectorLength);
+
+    const dataT constValue = 1.0;
+
+    for(size_t i = 0; i < cubeVectorLength; i++) {
+        initialData[i] = constValue; 
+    }
+
+    VolumeT volume(cubeSize, initialData);
+
+    InterpolatorT interpolator(&volume);
+
+    InterpolatorTests<InterpolatorT>::identity_tests(&interpolator, &volume); 
+    InterpolatorTests<InterpolatorT>::constant_tests(
+      &interpolator, &volume, constValue); 
 }

@@ -1,13 +1,15 @@
 #include "catch.hpp"
 
-#include "Volume.h"
+//#include "Volume.h"
+#include "VolumeAtAddressable.h"
 
 #include <vector>
 #include <complex>
 
 TEST_CASE("a volume of complex floats can be created from a vector") {
     typedef std::complex<float> dataT;
-    typedef Volume<dataT, std::vector<dataT>, float> VolumeT; 
+//    typedef Volume<dataT, std::vector<dataT>, float> VolumeT; 
+    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
 
     const size_t cubeSize = 10;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
@@ -18,7 +20,7 @@ TEST_CASE("a volume of complex floats can be created from a vector") {
         initialData[i] = i; 
     }
 
-    VolumeT volume(initialData, cubeSize);
+    VolumeT volume(cubeSize, initialData);
 
     SECTION("and all the values can be read back linearly") {
         for(size_t i = 0; i < cubeVectorLength; i++) {

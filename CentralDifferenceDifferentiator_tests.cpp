@@ -2,14 +2,14 @@
 
 #include "CentralDifferenceDifferentiator.h"
 
-#include "Volume.h"
+#include "VolumeAtAddressable.h"
 
 #include <vector>
 #include <complex>
 
 TEST_CASE("the derivative of a constant volume is zero everywhere") {
     typedef std::complex<float> dataT;
-    typedef Volume<dataT, std::vector<dataT>, float > VolumeT; 
+    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
 
     const size_t cubeSize = 10;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
@@ -20,7 +20,7 @@ TEST_CASE("the derivative of a constant volume is zero everywhere") {
         initialData[i] = (dataT) 1.0; 
     }
 
-    VolumeT volume(initialData, cubeSize);
+    VolumeT volume(cubeSize, initialData);
 
     const dataT dataZero = 0;
 
@@ -28,7 +28,7 @@ TEST_CASE("the derivative of a constant volume is zero everywhere") {
 
 
     SECTION("in the z direction") {
-      VolumeT dz(initialData, cubeSize);
+      VolumeT dz(cubeSize, cubeVectorLength);
       
       differ.zDerivative(&dz);
 
@@ -38,7 +38,7 @@ TEST_CASE("the derivative of a constant volume is zero everywhere") {
     }
     
     SECTION("in the y direction") {
-      VolumeT dy(initialData, cubeSize);
+      VolumeT dy(cubeSize, cubeVectorLength);
       
       differ.yDerivative(&dy);
 
@@ -48,7 +48,7 @@ TEST_CASE("the derivative of a constant volume is zero everywhere") {
     }
     
     SECTION("in the x direction") {
-      VolumeT dx(initialData, cubeSize);
+      VolumeT dx(cubeSize, cubeVectorLength);
       
       differ.xDerivative(&dx);
 

@@ -1,11 +1,10 @@
 #ifndef CentralDifferencesDifferentiator_h
 #define CentralDifferencesDifferentiator_h
 
-
 template <typename VolumeT>
 class CentralDifferencesDifferentiator {
   public:
-    typedef typename VolumeT::T T;
+    typedef typename VolumeT::value_type T;
 
     CentralDifferencesDifferentiator(const VolumeT *volume) :
       volume(volume),
