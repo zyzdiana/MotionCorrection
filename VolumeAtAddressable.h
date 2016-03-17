@@ -1,6 +1,8 @@
 #ifndef VolumeAtAddressable_h
 #define VolumeAtAddressable_h
 
+#include <ctgmath>
+
 template <
   typename AtAddressableT,
   typename CoordT
@@ -67,9 +69,21 @@ class VolumeAtAddressable : public AtAddressableT {
         
         return index;
     }
-    
+   
     int wrapIndex(const int index) const {
         return (index + cubeSize) % cubeSize;
+    }
+    
+    size_t wrapIndex(const size_t index) const {
+        return (index + cubeSize) % cubeSize;
+    }
+    
+    float wrapIndex(const float index) const {
+        return fmod(index + (float) cubeSize, (float) cubeSize);
+    }
+    
+    double wrapIndex(const double index) const {
+        return fmod(index + (double) cubeSize, (double) cubeSize);
     }
     
     template <typename TripleT>
