@@ -3,6 +3,7 @@
 
 #include "Interpolation_3D.h"
 #include "TricubicInterpolator.h"
+#include "CentralDifferenceDifferentiator.h"
 #include <stdio.h>
 #include <math.h>
 #include <iostream>
@@ -17,7 +18,7 @@ using namespace Eigen;
 
 template <
     typename VolumeT,
-    typename coordT>
+    typename CoordT>
 class Gauss_Newton{
   public:
     typedef typename VolumeT::T T;
@@ -30,7 +31,7 @@ class Gauss_Newton{
     typedef Matrix< T, 6, 6 >  Matrix66T;
     typedef Matrix< T, 6, 3 >  Matrix_M;
     typedef Matrix< T, 3, 3 > Matrix3T;
-    typedef Matrix< T, 3, 1 > CoordT;
+    typedef Matrix< T, 3, 1 > coordT;
     typedef Matrix< T, 4, 1 > PointT;
     typedef Matrix< T, 64, 1 > Vector64T;
     typedef Matrix< T, 6, 1 > Vector6T;
@@ -38,18 +39,22 @@ class Gauss_Newton{
     typedef Translation< T, 3> Translation3T;
     typedef AngleAxis< T > AngleAxisT;
 
-    const int derives_shape; 
     const int cubeSize;
-    const CoordT cubeCenter;
+    const coordT cubeCenter;
     std::vector<T> weights;
     Matrix4X grid_points;
 
-
-    Gauss_Newton(TricubicInterpolator<VolumeT, coordT>  *interpolator) :
+    static CoordT cubeCenterFromCubeSize(const float cubeSize) {
+        return ((CoordT) cubeSize)/(CoordT)2.0 - (CoordT)0.5;
+    }
+    Gauss_Newton(
+        const VolumeT *volume, 
+        const TricubicInterpolator<VolumeT, CoordT>  *interpolator, 
+        const CentralDifferencesDifferentiator<VolumeT> *differentiator) :
+        volume(volume),
         interpolator(interpolator),
-        derives_shape(interpolator->derives_shape),
-        cubeSize(interpolator->cubeSize),
-        cubeCenter(interpolator->cubeCenter) {
+        cubeSize(volume->cubeSize),
+        cubeCenter(volume->template cubeCenterAsTriple<coordT>()){
             // initialization
             gradP.resize(6, cubeSize*cubeSize*cubeSize);
             grid_points.resize(4, cubeSize*cubeSize*cubeSize);
@@ -57,7 +62,14 @@ class Gauss_Newton{
 
             // get axis derivatives from the interpolator
             Matrix_M M;
-            axis_derivatives = interpolator->compute_axis_derivatives();
+            coordT axis_derivatives;
+
+            VolumeT dz(cubeSize);
+            VolumeT dy(cubeSize);
+            VolumeT dx(cubeSize);
+            differentiator->zDerivative(&dz);
+            differentiator->yDerivative(&dy);
+            differentiator->xDerivative(&dx);
             // compute radius for masking
             T radius = cubeSize/2;
 
@@ -67,15 +79,19 @@ class Gauss_Newton{
                     for(int x = 0; x < cubeSize; ++x){
                         grid_points.col(idx) = PointT(z-cubeCenter(2),y-cubeCenter(1),x-cubeCenter(0),1);
                         // compute mask
-                        T n = (CoordT(z,y,x)-cubeCenter).norm();
+                        T n = (coordT(z,y,x)-cubeCenter).norm();
                         weights[idx] = window(n, radius);
+                        //weights[idx] = 1;
                         // compute the gradient using axis derivatives from the interpolator
-                        M = get_M(CoordT(z,y,x)-cubeCenter);
-                        gradP.col(idx) = M * axis_derivatives.col(idx) * weights[idx];
+                        M = get_M(coordT(z,y,x)-cubeCenter);
+
+                        axis_derivatives << dx.at(idx) , dy.at(idx) , dz.at(idx);
+                        gradP.col(idx) = M * axis_derivatives * weights[idx];
                         idx++;
                     }
                 }
             }
+
         }
 
     static T window(T n, T radius, T d = 0.4){
@@ -85,7 +101,7 @@ class Gauss_Newton{
         }
         else{
             if((tmp/d > -0.5) and (tmp/d < 0.5)){
-                return cos(PI*(tmp/d));
+                return cos(M_PI*(tmp/d));
             }
             else{
                 return 0.0;
@@ -94,54 +110,26 @@ class Gauss_Newton{
     }
 
 
-    // CoordT rotate_coords_transformation(T x, T y, T z, const Vector6T params){
-    //     //compute vector norm
-    //     T theta = params.tail(3).norm();
-    //     //if rotation is zero
-    //     if (theta == 0){
-    //         return CoordT(y-params(0),x-params(1),z-params(2));
-    //     }
-
-    //     Matrix3T R;
-
-    //     R = AngleAxisf(theta, params.tail(3)/theta).inverse();
-    //     CoordT dest_coord =  R*(CoordT(y-params(0),x-params(1),z-params(2)) - cubeCenter) +cubeCenter;
-    //     for (int i = 0; i < 3; ++i){
-    //         dest_coord(i) = fmod(dest_coord(i) + cubeSize, cubeSize);
-    //     }
-    //     return dest_coord;
-    // }
-
-    // CoordT rotate_coords_transformation(T x, T y, T z, const Vector6T params){
-    //     //compute vector norm
-    //     T theta = params.tail(3).norm();
-    //     //if rotation is zero
-    //     if (theta == 0){
-    //         return CoordT(y,x,z) - params.head(3);
-    //     }
-    //     Transform<T,3,Affine> transform = Translation3T(cubeCenter)  * AngleAxisT(theta, params.tail(3)/theta).inverse() *  Translation3T(-cubeCenter) * Translation3T(-params.head(3));
-
-    //     CoordT dest_coord =  transform * CoordT(y,x,z);
-
-    //     for (int i = 0; i < 3; ++i){
-    //         dest_coord(i) = fmod(dest_coord(i) + cubeSize, cubeSize);
-    //     }
-    //     return dest_coord;
-    // }
 
     Matrix4X rotate_coords_transformation(const Vector6T params){
         //compute vector norm
         T theta = params.tail(3).norm();
 
         // apply translation
+        //coordT trans_vec(-params(1),-params(0),-params(2));
         Transform<T,3,Affine> translation(Translation3T(-params.head(3)));
+        //Transform<T,3,Affine> translation( ( Translation3T(trans_vec) ) );
         Matrix4X transformed_coords = translation.matrix() * grid_points;
+
         //if rotation is zero
         if (theta == 0){
+            Transform<T,3,Affine> t_back( ( Translation3T(cubeCenter) ) );
+            transformed_coords = t_back.matrix() * transformed_coords;
             return transformed_coords;
         }
         Transform<T,3,Affine> rotation = Translation3T(cubeCenter)  * AngleAxisT(theta, params.tail(3)/theta).inverse();
         transformed_coords =  rotation * transformed_coords;
+
         for (int idx = 0; idx < cubeSize*cubeSize*cubeSize; ++idx){
             for (int i = 0; i < 3; ++i){
                 transformed_coords(i,idx) = fmod(transformed_coords(i,idx) + cubeSize, cubeSize);
@@ -150,7 +138,7 @@ class Gauss_Newton{
         return transformed_coords;
     }
 
-    Matrix_M get_M(CoordT pt){
+    Matrix_M get_M(coordT pt){
             Matrix_M M;
             M(0, 0) = 0;
             M(1, 0) = 0;
@@ -175,6 +163,7 @@ class Gauss_Newton{
             return M;
     }
 
+
     Vector6T gauss_newton(VolumeT *vol_target, int max_iter){
 
         Vector6T P_old;
@@ -197,6 +186,7 @@ class Gauss_Newton{
         Matrix4X dest_coords;
         T error = 0;
         while(counter < max_iter){
+            //cout << "Counter: " << counter << endl;
 
             P_old = P_cur;
             P_cur = P_new;
@@ -207,14 +197,12 @@ class Gauss_Newton{
             for(int i = 0; i < cubeSize; ++i){
                 for(int j = 0; j < cubeSize; ++j){
                     for(int k = 0; k < cubeSize; ++k){
-                        //dest_coords = rotate_coords_transformation(j,i,k, P_cur);
                         flatR(idx) = vol_target->at(i,j,k) - interpolator->interp(dest_coords(0,idx),dest_coords(1,idx),dest_coords(2,idx)) * weights[idx];
                         error += flatR(idx)*flatR(idx);
                         ++idx;
                     }
                 }
             }
-
             //if error increases, step back
             if(error > errors.back()){
                 P_old = P_cur;
@@ -227,12 +215,12 @@ class Gauss_Newton{
                 //check for convergence
                 int count = 0;
                 for (int i = 0; i < 6; ++i){
-                    if (abs(P_new(i) - P_cur(i)) <  1e-5){
+                    if (abs(deltaP(i)) <  1e-5){
                         count += 1;
                     }
                 }
                 if (count == 6){//converged
-                    // cout << "Converged in " << counter+1 << " iterations!" << endl;
+                    cout << "Converged in " << counter+1 << " iterations!" << endl;
                     break;
                 }
             }
@@ -241,7 +229,8 @@ class Gauss_Newton{
         return P_new;
     }
   protected:
-    const Interpolator3D<VolumeT, coordT> *interpolator;
+    const Interpolator3D<VolumeT, CoordT> *interpolator;
+    const VolumeT *volume;
     Matrix_gradP gradP;
     Matrix3X axis_derivatives;
 };

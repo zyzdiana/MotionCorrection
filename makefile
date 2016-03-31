@@ -1,8 +1,12 @@
-#VERSION = DEBUG
-VERSION = RELEASE
+VERSION = DEBUG
+#VERSION = RELEASE
 
-CXXFLAGS += -I./
-#CXXFLAGS += -I/Users/zyzdiana/GitHub/MotionCorrection/
+#CXXFLAGS += -I./
+CXXFLAGS += -I/Users/zyzdiana/GitHub/MotionCorrection/
+CXXFLAGS += -I/usr/local/include/
+CXXFLAGS += -L/usr/local/lib/
+LDLIBS += -lfftw3f
+#LDLIBS += lfftw3 ##for double
 
 ifeq ($(VERSION), DEBUG)                                                        
 CXXFLAGS += -g
@@ -28,7 +32,7 @@ CXXFLAGS += -DLINUX
 endif
 
 
-all: test test_read_file test_interp test_time_profiler test_rotate_coords
+all: test test_read_file test_interp test_time_profiler test_gn
 
 test_read_file:
 
@@ -43,6 +47,12 @@ test_rotate_coords:
 test_tricubic:
 
 test_gn:
+
+test_real_fftw:
+
+test_volume_fftw:
+
+test_fftw:
 
 #test: BinaryFile_tests.o interp3D_tests.o
 TESTOBJECTS += BinaryFile_tests.o
@@ -59,7 +69,12 @@ clean:
 	rm -f test_read_file
 	rm -f test_interp
 	rm -f test_time_profiler
+	rm -f test_inverse
+	rm -f test_rotate_coords
 	rm -f test_tricubic
 	rm -f test_gn
+	rm -f test_real_fftw
+	rm -f test_volume_fftw
+	rm -f test_fftw
 
 PHONY: .clean

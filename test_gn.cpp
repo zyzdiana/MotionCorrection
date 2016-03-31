@@ -30,7 +30,7 @@ double get_cpu_time(){
 
 int main(){
     typedef float dataT;
-    typedef Volume<dataT, std::vector<dataT> > VolumeT;
+    typedef Volume<dataT, std::vector<dataT>, float > VolumeT; 
     typedef VolumeT::T T;
     typedef Matrix< T, 64, 1 >     Vector64T;
 
@@ -44,7 +44,6 @@ int main(){
     std::vector<float> dataVector(cubeVectorLength);
     ReadFile<float>::read_volume(&dataVector, path, cubeSize);
 
-    typedef Volume<float, std::vector<float> > VolumeT;
     VolumeT volume(dataVector, cubeSize);
 
     //Target volume
@@ -53,12 +52,30 @@ int main(){
 
     VolumeT volume1(dataVector1, cubeSize);
 
-    TrilinearInterpolator<VolumeT, float> linear_interpolator(&volume);
-    TricubicInterpolator<VolumeT, float> cubic_interpolator(&volume);
+    VolumeT dx(cubeSize);
+    VolumeT dy(cubeSize);
+    VolumeT dz(cubeSize);
+    VolumeT dxy(cubeSize);
+    VolumeT dxz(cubeSize);
+    VolumeT dyz(cubeSize);
+    VolumeT dxyz(cubeSize);
 
+    // InterpolatorT interpolator(&volume, &dx, &dy, &dz, &dxy, &dxz, &dyz, &dxyz);
 
-    Gauss_Newton<VolumeT, float> gn(&cubic_interpolator);
+    TricubicInterpolator<VolumeT, float> cubic_interpolator(&volume, &dx, &dy, &dz, &dxy, &dxz, &dyz, &dxyz);
+    CentralDifferencesDifferentiator<VolumeT> differentiator(&volume);
+    // differentiator.zDerivative(&dz);
+    // differentiator.yDerivative(&dy);
+    // differentiator.xDerivative(&dx);
 
+    // int idx = 32*32;
+    // cout << dx.at(idx) << endl;
+    // cout << dy.at(idx) << endl;
+    // cout << dz.at(idx) << endl;
+    // cout << cubic_interpolator.interp(0.5,0.5,0.5) << endl;
+
+    Gauss_Newton<VolumeT, float> gn(&volume, &cubic_interpolator, &differentiator);
+    cout << gn.gauss_newton(&volume1, 2) << endl;
     // float x = 1;
     // float y = 2;
     // float z = 3;
@@ -73,9 +90,9 @@ int main(){
     // Vector6f P = gn.gauss_newton(&volume1, 10);
     // cout << "P from GN\n" << P << endl; 
     
-    while(true){
-        gn.gauss_newton(&volume1, 10);
-    }
+    // while(true){
+    //     gn.gauss_newton(&volume1, 10);
+    // }
 
     // double wall0 = get_wall_time();
     // double cpu0  = get_cpu_time();

@@ -62,7 +62,7 @@ class Volume {
         return (index + cubeSize) % cubeSize;
     }
 
-  protected:
+  public:
     template <typename TripleT>
     TripleT cubeCenterAsTriple() const {
       return TripleT(cubeCenter, cubeCenter, cubeCenter); 
