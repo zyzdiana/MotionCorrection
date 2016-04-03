@@ -5,8 +5,8 @@
 #include <string>
 #include <iostream>
 #include <fcntl.h>
-#ifdef LINUX
 #include <unistd.h>
+#ifdef LINUX
 #include <stdlib.h>
 #endif
 

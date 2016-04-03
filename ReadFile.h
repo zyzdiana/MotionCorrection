@@ -9,7 +9,6 @@
 #include <string>
 #include <sstream>
 #include <iostream>
-#include <fcntl.h>
 #include <complex>
 #include <fstream>
 #include <stdio.h>
