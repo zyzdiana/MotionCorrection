@@ -14,7 +14,7 @@
 
 TEST_CASE("a tricubic interpolator can be created from a volume") {
     typedef float dataT;
-    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
+    typedef VolumeAtAddressable< std::vector<dataT> > VolumeT; 
     typedef TricubicInterpolator<VolumeT, float> InterpolatorT;
 
     const size_t cubeSize = 10;
@@ -66,21 +66,19 @@ TEST_CASE("a tricubic interpolator can be created from a volume") {
 TEST_CASE(
   "a tricubic interpolator can be created from a constant-valued volume") {
     typedef float dataT;
-    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
+    typedef VolumeAtAddressable< std::vector<dataT> > VolumeT; 
     typedef TricubicInterpolator<VolumeT, float> InterpolatorT;
 
     const size_t cubeSize = 10;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
 
-    std::vector<dataT> initialData(cubeVectorLength);
+    VolumeT volume(cubeSize);
     
     const dataT constValue = 1.0;
 
     for(size_t i = 0; i < cubeVectorLength; i++) {
-        initialData[i] = constValue; 
+        volume.at(i) = constValue; 
     }
-
-    VolumeT volume(cubeSize, initialData);
 
     CentralDifferencesDifferentiator<VolumeT> volDiffer(&volume);
     VolumeT dx(cubeSize, cubeVectorLength);
@@ -120,19 +118,18 @@ TEST_CASE(
 TEST_CASE(
   "a tricubic interpolator can be created from an image volume") {
     typedef float dataT;
-    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
+    typedef VolumeAtAddressable< std::vector<dataT> > VolumeT; 
     typedef TricubicInterpolator<VolumeT, float> InterpolatorT;
 
     const size_t cubeSize = 32;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
 
-    std::vector<dataT> initialData(cubeVectorLength);
+    VolumeT volume(cubeSize);
     
     REQUIRE(cubeVectorLength * sizeof(dataT)
-            == BinaryFile<dataT>::read(&initialData,
+            == BinaryFile<VolumeT>::read(&volume,
                 "TricubicInterpolator_tests/testVolInput.dat"));
 
-    VolumeT volume(cubeSize, initialData);
 
     CentralDifferencesDifferentiator<VolumeT> volDiffer(&volume);
     VolumeT dx(cubeSize, cubeVectorLength);
@@ -173,7 +170,7 @@ TEST_CASE(
       std::vector<dataT> solutionData(pointsLength);
     
       REQUIRE(pointsLength * sizeof(dataT)
-            == BinaryFile<dataT>::read(&solutionData,
+            == BinaryFile< std::vector<dataT> >::read(&solutionData,
                 "TricubicInterpolator_tests/testPointsOutput.dat"));
    
       size_t offset = 0;

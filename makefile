@@ -3,7 +3,12 @@ VERSION = DEBUG
 
 #CXXFLAGS += -I./
 CXXFLAGS += -I/Users/dylan/Documents/Research/Students/Diana/MotionCorrection
+CXXFLAGS += -I/usr/local/include
 #CXXFLAGS += -I/Users/zyzdiana/GitHub/MotionCorrection/
+
+LDFLAGS += -L/usr/local/lib
+LDLIBS += -lfftw3f
+LDLIBS += -lfftw3
 
 ifeq ($(VERSION), DEBUG)                                                        
 CXXFLAGS += -g
@@ -48,9 +53,13 @@ test_gn:
 #test: BinaryFile_tests.o interp3D_tests.o
 TESTOBJECTS += BinaryFile_tests.o
 TESTOBJECTS += Volume_tests.o
+TESTOBJECTS += FFTWBuffer_tests.o
+TESTOBJECTS += FFTWBuffer.o
 TESTOBJECTS += CentralDifferenceDifferentiator_tests.o
 TESTOBJECTS += TrilinearInterpolator_tests.o
 TESTOBJECTS += TricubicInterpolator_tests.o
+TESTOBJECTS += FFTOp_tests.o
+TESTOBJECTS += FFTOp.o
 
 test: $(TESTOBJECTS)
 

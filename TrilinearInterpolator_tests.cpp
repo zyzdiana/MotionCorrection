@@ -11,7 +11,7 @@
 
 TEST_CASE("a trilinear interpolator can be created from a volume") {
     typedef std::complex<float> dataT;
-    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
+    typedef VolumeAtAddressable< std::vector<dataT> > VolumeT; 
     typedef TrilinearInterpolator<VolumeT, float> InterpolatorT;
 
     const size_t cubeSize = 10;
@@ -75,7 +75,7 @@ TEST_CASE("a trilinear interpolator can be created from a volume") {
 TEST_CASE(
   "a trilinear interpolator can be created from a constant-valued volume") {
     typedef std::complex<float> dataT;
-    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
+    typedef VolumeAtAddressable< std::vector<dataT> > VolumeT; 
     typedef TrilinearInterpolator<VolumeT, float> InterpolatorT;
 
     const size_t cubeSize = 10;

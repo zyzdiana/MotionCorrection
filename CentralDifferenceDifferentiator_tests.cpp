@@ -9,7 +9,7 @@
 
 TEST_CASE("the derivative of a constant volume is zero everywhere") {
     typedef std::complex<float> dataT;
-    typedef VolumeAtAddressable< std::vector<dataT>, float> VolumeT; 
+    typedef VolumeAtAddressable< std::vector<dataT> > VolumeT; 
 
     const size_t cubeSize = 10;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;

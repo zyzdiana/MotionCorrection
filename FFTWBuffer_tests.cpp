@@ -1,20 +1,21 @@
 #include "catch.hpp"
 
-//#include "Volume.h"
-#include "VolumeAtAddressable.h"
-
-#include <vector>
 #include <complex>
 
-TEST_CASE("a volume of complex floats can be created from a vector") {
-    typedef std::complex<float> dataT;
-    typedef VolumeAtAddressable< std::vector<dataT> > VolumeT; 
+#include "FFTWBuffer.h"
+
+TEST_CASE("a volume of floats can be created from a vector") {
+    typedef float dataT;
+    typedef std::complex<float> complexT;
+    typedef FFTWBuffer< dataT> FFTWBufferT; 
 
     const size_t cubeSize = 10;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
 
-    std::vector<dataT> initialData(cubeVectorLength);
+    FFTWBufferT initialData(cubeVectorLength);
+    FFTWBufferT fourierData(cubeSize * cubeSize * (cubeSize / 2 + 1));
 
+/*
     for(size_t i = 0; i < cubeVectorLength; i++) {
         initialData[i] = i; 
     }
@@ -39,4 +40,5 @@ TEST_CASE("a volume of complex floats can be created from a vector") {
             }
         }
     }
+*/
 }

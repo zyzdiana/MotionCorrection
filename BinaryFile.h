@@ -10,11 +10,12 @@
 #include <stdlib.h>
 #endif
 
-template <typename T>
+template <typename AtAddressableT>
 class BinaryFile{
   public:
+    typedef typename AtAddressableT::value_type value_type;
 
-    static int read(std::vector<T> *buffer, std::string filePath) {
+    static int read(AtAddressableT *buffer, std::string filePath) {
         int inputFile = open(filePath.c_str(), O_RDONLY);
     
         if(-1 == inputFile) {
@@ -23,14 +24,15 @@ class BinaryFile{
         }
 
         int bytesRead =
-            ::read(inputFile, &(buffer->at(0)), sizeof(T) * buffer->size());
+            ::read(inputFile, &(buffer->at(0)),
+              sizeof(value_type) * buffer->size());
 
         close(inputFile);
 
         return bytesRead;
     }
     
-    static int write(std::vector<T> *buffer, std::string filePath) {
+    static int write(AtAddressableT *buffer, std::string filePath) {
         // create the file with user-only permissions
         int outputFile = open(filePath.c_str(), O_WRONLY | O_CREAT, 0600);
     
@@ -40,7 +42,8 @@ class BinaryFile{
         }
 
         int bytesWritten = 
-            ::write(outputFile, &(buffer->at(0)), sizeof(T) * buffer->size());
+            ::write(outputFile, &(buffer->at(0)),
+              sizeof(value_type) * buffer->size());
     
         close(outputFile);
 

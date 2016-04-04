@@ -1,39 +1,43 @@
-#ifndef VolumeAtAddressable_h
-#define VolumeAtAddressable_h
+#ifndef SymmetricHalfVolumeAtAddressable_h
+#define SymmetricHalfVolumeAtAddressable_h
 
-#include <cmath>
+#include <ctgmath>
 
 template < typename AtAddressableT >
-class VolumeAtAddressable : public AtAddressableT {
+class SymmetricHalfVolumeAtAddressable : public AtAddressableT {
   public:
     typedef typename AtAddressableT::value_type value_type;
 
-    VolumeAtAddressable(
+    SymmetricHalfVolumeAtAddressable(
       const size_t cubeSize
     ) :
-    AtAddressableT(cubeSize * cubeSize * cubeSize), 
+    AtAddressableT(cubeSize * cubeSize * getLastFourierDimension(cubeSize)), 
     cubeSize(cubeSize),
-    totalPoints(cubeSize * cubeSize * cubeSize),
+    totalPoints(cubeSize * cubeSize * getLastFourierDimension(cubeSize)),
     maxCubeIndex(cubeSize - 1)
     {}
     
-    VolumeAtAddressable(
+    static size_t getLastFourierDimension(const size_t cubeSize) {
+      return cubeSize / 2 + 1; 
+    }
+    
+    SymmetricHalfVolumeAtAddressable(
       const size_t cubeSize,
       const size_t atAddressableSize
     ) :
     AtAddressableT(atAddressableSize),
     cubeSize(cubeSize),
-    totalPoints(cubeSize * cubeSize * cubeSize),
+    totalPoints(cubeSize * cubeSize * getLastFourierDimension(cubeSize)),
     maxCubeIndex(cubeSize - 1)
     {}
     
-    VolumeAtAddressable(
+    SymmetricHalfVolumeAtAddressable(
       const size_t cubeSize,
       const AtAddressableT atAddressable
     ) :
     AtAddressableT(atAddressable),
     cubeSize(cubeSize),
-    totalPoints(cubeSize * cubeSize * cubeSize),
+    totalPoints(cubeSize * cubeSize * getLastFourierDimension(cubeSize)),
     maxCubeIndex(cubeSize - 1)
     {}
 
