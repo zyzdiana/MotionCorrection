@@ -14,7 +14,8 @@ class VolumeAtAddressable : public AtAddressableT {
     AtAddressableT(cubeSize * cubeSize * cubeSize), 
     cubeSize(cubeSize),
     totalPoints(cubeSize * cubeSize * cubeSize),
-    maxCubeIndex(cubeSize - 1)
+    maxCubeIndex(cubeSize - 1),
+    buffer(&(asAtAddressable().at(0)))
     {}
     
     VolumeAtAddressable(
@@ -24,7 +25,8 @@ class VolumeAtAddressable : public AtAddressableT {
     AtAddressableT(atAddressableSize),
     cubeSize(cubeSize),
     totalPoints(cubeSize * cubeSize * cubeSize),
-    maxCubeIndex(cubeSize - 1)
+    maxCubeIndex(cubeSize - 1),
+    buffer(&(asAtAddressable().at(0)))
     {}
     
     VolumeAtAddressable(
@@ -34,7 +36,8 @@ class VolumeAtAddressable : public AtAddressableT {
     AtAddressableT(atAddressable),
     cubeSize(cubeSize),
     totalPoints(cubeSize * cubeSize * cubeSize),
-    maxCubeIndex(cubeSize - 1)
+    maxCubeIndex(cubeSize - 1),
+    buffer(&(asAtAddressable().at(0)))
     {}
 
     const value_type& at(const size_t z, const size_t y, const size_t x) const {
@@ -95,6 +98,7 @@ class VolumeAtAddressable : public AtAddressableT {
     const size_t cubeSize; 
     const size_t totalPoints;
     const size_t maxCubeIndex; 
+    value_type* buffer;
 };
 
 #endif

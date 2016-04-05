@@ -3,9 +3,6 @@
 
 #include "Interpolator3D.h"
 
-#include <stdio.h>
-#include <iostream>
-#include <fstream>
 #include <Eigen/Dense>
 #include <vector>
 #include <cmath>
