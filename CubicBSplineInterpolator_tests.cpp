@@ -60,12 +60,12 @@ TEST_CASE(
       &interpolator, &volume, constValue, 0.0001); 
 }
 
-/*
+
 TEST_CASE(
-  "a tricubic interpolator can be created from an image volume") {
+  "a cubic B-spline interpolator can be created from an image volume") {
     typedef float dataT;
     typedef VolumeAtAddressable< std::vector<dataT> > VolumeT; 
-    typedef TricubicInterpolator<VolumeT, float> InterpolatorT;
+    typedef CubicBSplineInterpolator<VolumeT, float> InterpolatorT;
 
     const size_t cubeSize = 32;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
@@ -74,40 +74,12 @@ TEST_CASE(
     
     REQUIRE(cubeVectorLength * sizeof(dataT)
             == BinaryFile<VolumeT>::read(&volume,
-                "TricubicInterpolator_tests/testVolInput.dat"));
+                "CubicBSplineInterpolator_tests/testVolInput.dat"));
 
+    InterpolatorT interpolator(&volume);
 
-    CentralDifferencesDifferentiator<VolumeT> volDiffer(&volume);
-    VolumeT dx(cubeSize, cubeVectorLength);
-    volDiffer.xDerivative(&dx);
-
-    VolumeT dy(cubeSize, cubeVectorLength);
-    volDiffer.yDerivative(&dy);
-
-    VolumeT dz(cubeSize, cubeVectorLength);
-    volDiffer.zDerivative(&dz);
-
-    CentralDifferencesDifferentiator<VolumeT> dxDiffer(&dx);
-   
-    VolumeT dxy(cubeSize, cubeVectorLength);
-    dxDiffer.yDerivative(&dxy);
-    
-    VolumeT dxz(cubeSize, cubeVectorLength);
-    dxDiffer.zDerivative(&dxz);
-
-    CentralDifferencesDifferentiator<VolumeT> dyDiffer(&dy);
-
-    VolumeT dyz(cubeSize, cubeVectorLength);
-    dyDiffer.zDerivative(&dyz);
-
-    CentralDifferencesDifferentiator<VolumeT> dxyDiffer(&dxy);
-    
-    VolumeT dxyz(cubeSize, cubeVectorLength);
-    dxyDiffer.zDerivative(&dxyz);
-
-    InterpolatorT interpolator(&volume, &dx, &dy, &dz, &dxy, &dxz, &dyz, &dxyz);
-
-    InterpolatorTests<InterpolatorT>::identity_tests(&interpolator, &volume); 
+    InterpolatorTests<InterpolatorT>::approx_identity_tests(
+      &interpolator, &volume, 0.0001); 
 
     SECTION(
       "and interpolating at 0.25-voxel intervals gives the precomputed answers") {
@@ -117,7 +89,7 @@ TEST_CASE(
     
       REQUIRE(pointsLength * sizeof(dataT)
             == BinaryFile< std::vector<dataT> >::read(&solutionData,
-                "TricubicInterpolator_tests/testPointsOutput.dat"));
+                "CubicBSplineInterpolator_tests/testPointsOutput.dat"));
    
       size_t offset = 0;
       for(dataT z = 0; z <= cubeSize; z += 0.25) {
@@ -146,4 +118,3 @@ TEST_CASE(
     }
 }
 
-*/
