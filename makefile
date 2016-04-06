@@ -61,6 +61,7 @@ TESTOBJECTS += TricubicInterpolator_tests.o
 TESTOBJECTS += CubicBSplineInterpolator_tests.o
 TESTOBJECTS += FFTOp_tests.o
 TESTOBJECTS += FFTOp.o
+TESTOBJECTS += Gauss_Newton_tests.o
 
 test: $(TESTOBJECTS)
 

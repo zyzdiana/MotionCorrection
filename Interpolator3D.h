@@ -11,14 +11,10 @@ class Interpolator3D {
     typedef _CoordT CoordT;
 
     const int cubeSize;
+
     Interpolator3D(const VolumeT *volume) :
         volume(volume), 
         cubeSize(volume->cubeSize){}
-
-    virtual T interp(
-        const CoordT z,
-        const CoordT y,
-        const CoordT x) const = 0;
 
   protected:
     const VolumeT *volume;

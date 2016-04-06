@@ -13,7 +13,7 @@ class Cubic3DInterpolator : public Interpolator3D<VolumeT, CoordT> {
     typedef Eigen::Matrix< T, 64, 64 >  Matrix_64_64_T;
     typedef Eigen::Matrix< T, 64, Eigen::Dynamic >  Matrix_64_X_T;
     
-    virtual T interp(
+    T interp(
       const CoordT z,
       const CoordT y,
       const CoordT x) const {
