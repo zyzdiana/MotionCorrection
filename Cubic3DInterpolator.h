@@ -48,11 +48,12 @@ class Cubic3DInterpolator : public Interpolator3D<VolumeT, CoordT> {
 
     void fill_target_Y(T* target_YArr, const T z, const T y, const T x) const {
         T xSq = x*x;
+        T xCubed = xSq * x;
 
         target_YArr[0] = (T) 1.0;
         target_YArr[1] = x;
         target_YArr[2] = xSq;
-        target_YArr[3] = xSq * x; // x*x*x
+        target_YArr[3] = xCubed; 
         target_YArr[4] = target_YArr[0] * y; // y
         target_YArr[5] = target_YArr[1] * y; // x*y
         target_YArr[6] = target_YArr[2] * y; // x*x*y

@@ -1,14 +1,9 @@
 #ifndef Gauss_Newton_h
 #define Gauss_Newton_h
 
-#include <stdio.h>
-#include <math.h>
 #include <iostream>
-#include <fstream>
-#include <iterator>
-#include <complex>
-#include <vector>
-#include <string>
+
+#include <sys/time.h>
 
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
@@ -49,23 +44,38 @@ class Gauss_Newton{
     void minimize(
       const VolumeT *newVolume,
       const ParamT *initialParam,
-      ParamT *finalParam) {
-      
+      ParamT *finalParam,
+      const T paramUpdateNormLimit = 1e-6,
+      size_t *elapsedSteps = NULL, 
+      double *elapsedTime = NULL 
+      ) {
+      struct timeval timeBefore, timeAfter;
+
+      if(NULL != elapsedTime) {
+        gettimeofday(&timeBefore, NULL);
+      }
+
       ParamT curParam = *initialParam;
 
       NewVolVecT newVolVec(
         newVolume->buffer, cubeSize * cubeSize * cubeSize, 1);
 
       ParamT reducedResidual;
-
-      for(size_t step = 0; step < 10; step++) {
+      size_t step = 0;
+      
+      for(; step < 10; step++) {
 //        std::cout << "-------" << std::endl; 
 //        std::cout << "step " << step << std::endl; 
 //        std::cout << "curParam: " << std::endl <<
 //          curParam.transpose() << std::endl; 
 
         computeResidual(newVolume, &newVolVec, &curParam);
-      
+
+        // at this point we could check if this new residual is better
+        // than the previous residual, and if not, we could respond
+        // by taking some other search step. This test can be expensive,
+        // though, so for right now we skip it and hope things are improving
+
         reducedResidual.noalias() = residualGradient * residual;
       
 //        std::cout << "reducedResidual: " << std::endl <<
@@ -74,10 +84,28 @@ class Gauss_Newton{
         ParamT paramUpdate;
         paramUpdate.noalias() = residualHessianLDL.solve(reducedResidual);
 
-        curParam -= paramUpdate; 
+        curParam -= paramUpdate;
+
+
+        //check for convergence
+        if(paramUpdate.norm() < paramUpdateNormLimit) {
+          break; 
+        }
       }
 
       *finalParam = curParam;
+
+      if(NULL != elapsedSteps) {
+        *elapsedSteps = step + 1; 
+      }
+
+      if(NULL != elapsedTime) { 
+        gettimeofday(&timeAfter, NULL);
+  
+        *elapsedTime =
+          ((double) (timeAfter.tv_sec - timeBefore.tv_sec)) * 1000.0 +
+          ((double) (timeAfter.tv_usec - timeBefore.tv_usec)) * 0.001;
+      }
     }
 
   protected:

@@ -15,13 +15,13 @@ TEST_CASE("a Gauss-Newton minimizer can be instantiated") {
     typedef Gauss_Newton<InterpolatorT> MinimizerT; 
     typedef MinimizerT::ParamT ParamT;
 
-    const size_t cubeSize = 10;
+    const size_t cubeSize = 32;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
 
     VolumeT volume(cubeSize);
 
     for(size_t i = 0; i < cubeVectorLength; i++) {
-        volume.at(i) = i; 
+        volume.at(i) = ((dataT) i) / ((dataT) cubeVectorLength); 
     }
 
     InterpolatorT interpolator(&volume);
@@ -38,32 +38,27 @@ TEST_CASE("a Gauss-Newton minimizer can be instantiated") {
     
     MinimizerT minimizer(&interpolator, &dz, &dy, &dx);
 
-    ParamT initialParam;
-    initialParam << 0, 0, 0, 0, 0, 0;
-
-    ParamT finalParam;
-
-    minimizer.minimize(&volume, &initialParam, &finalParam);
-
-/*
-    SECTION("and all the values can be read back linearly") {
-        for(size_t i = 0; i < cubeVectorLength; i++) {
-            REQUIRE(initialData[i] == volume.at(i)); 
+    SECTION("and registering an image with itself produces 0 transformation") {
+      ParamT initialParam;
+      initialParam << 0, 0, 0, 0, 0, 0;
+  
+      ParamT finalParam;
+  
+      dataT paramUpdateNormLimit = 1e-6;
+  
+      double elapsedTime;
+      size_t elapsedSteps;
+  
+      minimizer.minimize(&volume, &initialParam, &finalParam,
+        paramUpdateNormLimit, &elapsedSteps, &elapsedTime);
+ 
+        for(int i = 0; i < 6; i++) {
+          REQUIRE(0 == Approx(finalParam(i)));
         }
-    }
-    
-    SECTION("and all the values can be read back via coordinates") {
-        size_t i = 0;
 
-        for(size_t z = 0; z < cubeSize; z++) {
-            for(size_t y = 0; y < cubeSize; y++) {
-                for(size_t x = 0; x < cubeSize; x++) {
-                    REQUIRE(initialData[i] == volume.at(z, y, x));
-                    i++;
-                }
-            }
-        }
+      WARN("elapsed time: " << elapsedTime << " ms");
+      WARN("elapsed steps: " << elapsedSteps);
+      WARN("finalParam: " << finalParam.transpose());
     }
-*/
 }
 

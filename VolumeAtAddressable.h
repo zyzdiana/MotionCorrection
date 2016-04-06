@@ -13,6 +13,9 @@ class VolumeAtAddressable : public AtAddressableT {
     ) :
     AtAddressableT(cubeSize * cubeSize * cubeSize), 
     cubeSize(cubeSize),
+    cubeSizeInt(cubeSize),
+    cubeSizeFloat(cubeSize),
+    cubeSizeDouble(cubeSize),
     totalPoints(cubeSize * cubeSize * cubeSize),
     maxCubeIndex(cubeSize - 1),
     buffer(&(asAtAddressable().at(0)))
@@ -24,6 +27,9 @@ class VolumeAtAddressable : public AtAddressableT {
     ) :
     AtAddressableT(atAddressableSize),
     cubeSize(cubeSize),
+    cubeSizeInt(cubeSize),
+    cubeSizeFloat(cubeSize),
+    cubeSizeDouble(cubeSize),
     totalPoints(cubeSize * cubeSize * cubeSize),
     maxCubeIndex(cubeSize - 1),
     buffer(&(asAtAddressable().at(0)))
@@ -35,6 +41,9 @@ class VolumeAtAddressable : public AtAddressableT {
     ) :
     AtAddressableT(atAddressable),
     cubeSize(cubeSize),
+    cubeSizeInt(cubeSize),
+    cubeSizeFloat(cubeSize),
+    cubeSizeDouble(cubeSize),
     totalPoints(cubeSize * cubeSize * cubeSize),
     maxCubeIndex(cubeSize - 1),
     buffer(&(asAtAddressable().at(0)))
@@ -68,20 +77,58 @@ class VolumeAtAddressable : public AtAddressableT {
         return index;
     }
    
-    int wrapIndex(const int index) const {
-        return (index + cubeSize) % cubeSize;
+    int wrapIndex(int index) const {
+        while(index < 0) {
+          index += cubeSizeInt; 
+        }
+
+        while(index >= cubeSizeInt) {
+          index -= cubeSizeInt;  
+        }
+
+        return index;
+
+        //return (index + cubeSizeInt) % cubeSizeInt;
     }
     
-    size_t wrapIndex(const size_t index) const {
-        return (index + cubeSize) % cubeSize;
+    size_t wrapIndex(size_t index) const {
+        // index can't be negative
+
+        while(index >= cubeSize) {
+          index -= cubeSize;  
+        }
+
+        return index;
+
+        //return (index + cubeSize) % cubeSize;
     }
     
-    float wrapIndex(const float index) const {
-        return fmod(index + (float) cubeSize, (float) cubeSize);
+    float wrapIndex(float index) const {
+        while(index < 0) {
+          index += cubeSizeFloat; 
+        }
+
+        while(index >= cubeSizeFloat) {
+          index -= cubeSizeFloat;  
+        }
+
+        return index;
+
+        //return std::fmod(index + cubeSizeFloat, cubeSizeFloat);
     }
     
-    double wrapIndex(const double index) const {
-        return fmod(index + (double) cubeSize, (double) cubeSize);
+    double wrapIndex(double index) const {
+        while(index < 0) {
+          index += cubeSizeDouble; 
+        }
+
+        while(index >= cubeSizeDouble) {
+          index -= cubeSizeDouble;  
+        }
+
+        return index;
+
+        //return std::fmod(index + cubeSizeDouble, cubeSizeDouble);
     }
     
 
@@ -96,6 +143,9 @@ class VolumeAtAddressable : public AtAddressableT {
 
   public:
     const size_t cubeSize; 
+    const int cubeSizeInt; 
+    const float cubeSizeFloat; 
+    const double cubeSizeDouble; 
     const size_t totalPoints;
     const size_t maxCubeIndex; 
     value_type* buffer;
