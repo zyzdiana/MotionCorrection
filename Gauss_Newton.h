@@ -23,7 +23,9 @@ class Gauss_Newton{
       const InterpolatorT *interpRef, 
       const VolumeT *refdz,
       const VolumeT *refdy,
-      const VolumeT *refdx) :
+      const VolumeT *refdx,
+      double *gradientAndHessianComputeTime
+      ) :
       interpRef(interpRef),
       cubeSize(refdz->cubeSize),
       cubeCenter(cubeCenterFromCubeSize(cubeSize)),
@@ -32,9 +34,11 @@ class Gauss_Newton{
       transformedPointList(3, cubeSize * cubeSize * cubeSize),
       interpPoints(cubeSize * cubeSize * cubeSize, 1),
       residual(cubeSize * cubeSize * cubeSize, 1) {
+      
       generateResidualGradientAndApproxHessian(
         &residualGradient, &approxResidualHessian,
-        refdz, refdy, refdx, cubeSize, cubeCenter);
+        refdz, refdy, refdx, cubeSize, cubeCenter,
+        gradientAndHessianComputeTime);
       
       residualHessianLDL.compute(approxResidualHessian);
 
@@ -45,6 +49,7 @@ class Gauss_Newton{
       const VolumeT *newVolume,
       const ParamT *initialParam,
       ParamT *finalParam,
+      const size_t maxSteps = 20,
       const T paramUpdateNormLimit = 1e-6,
       size_t *elapsedSteps = NULL, 
       double *elapsedTime = NULL 
@@ -63,7 +68,7 @@ class Gauss_Newton{
       ParamT reducedResidual;
       size_t step = 0;
       
-      for(; step < 10; step++) {
+      for(; step < maxSteps; step++) {
 //        std::cout << "-------" << std::endl; 
 //        std::cout << "step " << step << std::endl; 
 //        std::cout << "curParam: " << std::endl <<
@@ -128,7 +133,16 @@ class Gauss_Newton{
       const VolumeT *refdy,
       const VolumeT *refdx,
       const size_t cubeSize,
-      const CoordT cubeCenter) {
+      const CoordT cubeCenter,
+      double *elapsedTime = NULL 
+      ) {
+
+     
+      struct timeval timeBefore, timeAfter;
+
+      if(NULL != elapsedTime) {
+        gettimeofday(&timeBefore, NULL);
+      }
 
       size_t offset = 0;
 
@@ -147,41 +161,37 @@ class Gauss_Newton{
 
           for(size_t x = 0; x < cubeSize; x++, offset++) {
             CoordT xIndex = ((CoordT) x) - cubeCenter;
+
+            // Note we define the MMatrix differently than in the
+            // Mathematica code, because we're going to use the ordering
+            // dz, dy, dx instead of dx, dy, dz
             MMatrix <<
-               0,  0, -1, -yIndex,  zIndex,       0,
+              -1,  0,  0,       0, -xIndex,  yIndex,
                0, -1,  0,  xIndex,       0, -zIndex,
-              -1,  0,  0,       0, -xIndex,  yIndex;
+               0,  0, -1, -yIndex,  zIndex,       0;
 
             tempDerivVector <<
-              refdz->at(z, y, x), 
-              refdy->at(z, y, x), 
-              refdx->at(z, y, x);
+              refdz->at(offset), 
+              refdy->at(offset), 
+              refdx->at(offset);
 
             
-            if(offset < 2) {
-//              std::cout << "tempDerivVector: " << tempDerivVector << std::endl;
-            }
-            
-            if(offset < 2) {
-//              std::cout << "MMatrix: " << MMatrix << std::endl;
-            }
-
             tempGradVector.noalias() = tempDerivVector * MMatrix; 
-
-            if(offset < 2) {
-//              std::cout << "tempGradVector: " << tempGradVector << std::endl;
-            }
 
             approxResidualHessian->template selfadjointView<Eigen::Upper>().rankUpdate(
               tempGradVector.transpose());
             
-//            if(offset < 2) {
-//              std::cout << "approxResidualHessian:\n" << *approxResidualHessian << std::endl;
-//            }
-
             residualGradient->col(offset) = tempGradVector;
           }
         }
+      }
+      
+      if(NULL != elapsedTime) { 
+        gettimeofday(&timeAfter, NULL);
+  
+        *elapsedTime =
+          ((double) (timeAfter.tv_sec - timeBefore.tv_sec)) * 1000.0 +
+          ((double) (timeAfter.tv_usec - timeBefore.tv_usec)) * 0.001;
       }
     }
 

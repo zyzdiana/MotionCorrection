@@ -7,10 +7,11 @@
 
 #include "CentralDifferenceDifferentiator.h"
 
+#include "FFTWBuffer.h"
 
 TEST_CASE("a Gauss-Newton minimizer can be instantiated") {
     typedef float dataT;
-    typedef VolumeAtAddressable< std::vector<dataT> > VolumeT; 
+    typedef VolumeAtAddressable< FFTWBuffer<dataT> > VolumeT; 
     typedef CubicBSplineInterpolator<VolumeT, float> InterpolatorT; 
     typedef Gauss_Newton<InterpolatorT> MinimizerT; 
     typedef MinimizerT::ParamT ParamT;
@@ -35,22 +36,30 @@ TEST_CASE("a Gauss-Newton minimizer can be instantiated") {
 
     VolumeT dz(cubeSize, cubeVectorLength);
     volDiffer.zDerivative(&dz);
-    
-    MinimizerT minimizer(&interpolator, &dz, &dy, &dx);
+   
+    double gradientAndHessianComputeTime;
+
+    MinimizerT minimizer(&interpolator, &dz, &dy, &dx,
+      &gradientAndHessianComputeTime);
+      
+    WARN("elapsed time computing gradient and Hessian: "
+      << gradientAndHessianComputeTime << " ms");
 
     SECTION("and registering an image with itself produces 0 transformation") {
       ParamT initialParam;
       initialParam << 0, 0, 0, 0, 0, 0;
   
       ParamT finalParam;
-  
+ 
+      size_t maxSteps = 20;
+
       dataT paramUpdateNormLimit = 1e-6;
   
       double elapsedTime;
       size_t elapsedSteps;
   
       minimizer.minimize(&volume, &initialParam, &finalParam,
-        paramUpdateNormLimit, &elapsedSteps, &elapsedTime);
+        maxSteps, paramUpdateNormLimit, &elapsedSteps, &elapsedTime);
  
         for(int i = 0; i < 6; i++) {
           REQUIRE(0 == Approx(finalParam(i)));

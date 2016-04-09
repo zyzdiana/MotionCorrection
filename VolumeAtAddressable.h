@@ -150,5 +150,6 @@ class VolumeAtAddressable : public AtAddressableT {
     const size_t maxCubeIndex; 
     value_type* buffer;
 };
+    
 
 #endif
