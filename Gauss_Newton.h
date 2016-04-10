@@ -50,7 +50,8 @@ class Gauss_Newton{
       const ParamT *initialParam,
       ParamT *finalParam,
       const size_t maxSteps = 20,
-      const T paramUpdateNormLimit = 0,
+      const T paramUpdate2NormLimit = 0,
+      const T paramUpdateInfinityNormLimit = 0,
       size_t *elapsedSteps = NULL, 
       double *elapsedTime = NULL 
       ) {
@@ -83,9 +84,6 @@ class Gauss_Newton{
 
         reducedResidual.noalias() = residualGradient * residual;
       
-//        std::cout << "reducedResidual: " << std::endl <<
-//          reducedResidual.transpose() << std::endl; 
-
         // This equation solves the parameter update, but with signs negated
         ParamT negParamUpdate;
         negParamUpdate.noalias() = residualHessianLDL.solve(reducedResidual);
@@ -94,10 +92,22 @@ class Gauss_Newton{
         curParam -= negParamUpdate;
 
 
-        //check for convergence
-        if(paramUpdateNormLimit > 0) {
-          if(negParamUpdate.norm() < paramUpdateNormLimit) {
+        //checks for convergence
+        if(paramUpdate2NormLimit > 0) {
+          if(negParamUpdate.norm() < paramUpdate2NormLimit) {
             break; 
+          }
+        }
+
+        if(paramUpdateInfinityNormLimit > 0) {
+          bool largerThanLimit = false;
+
+          for (int i = 0; (! largerThanLimit) && (i < 6); ++i) {
+            largerThanLimit =  
+              (std::abs(negParamUpdate(i)) >  paramUpdateInfinityNormLimit);
+          }
+          if (! largerThanLimit) {
+            break;
           }
         }
       }

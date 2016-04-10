@@ -53,13 +53,15 @@ TEST_CASE("a Gauss-Newton minimizer can be instantiated") {
  
       size_t maxSteps = 20;
 
-      dataT paramUpdateNormLimit = 1e-10;
+      const dataT paramUpdate2NormLimit = 1e-10;
+      const dataT paramUpdateInfinityNormLimit = 0;
   
       double elapsedTime;
       size_t elapsedSteps;
   
       minimizer.minimize(&volume, &initialParam, &finalParam,
-        maxSteps, paramUpdateNormLimit, &elapsedSteps, &elapsedTime);
+        maxSteps, paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+        &elapsedSteps, &elapsedTime);
  
         for(int i = 0; i < 6; i++) {
           REQUIRE(0 == Approx(finalParam(i)));
