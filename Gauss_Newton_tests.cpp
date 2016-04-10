@@ -53,7 +53,7 @@ TEST_CASE("a Gauss-Newton minimizer can be instantiated") {
  
       size_t maxSteps = 20;
 
-      dataT paramUpdateNormLimit = 1e-6;
+      dataT paramUpdateNormLimit = 1e-10;
   
       double elapsedTime;
       size_t elapsedSteps;

@@ -50,7 +50,7 @@ class Gauss_Newton{
       const ParamT *initialParam,
       ParamT *finalParam,
       const size_t maxSteps = 20,
-      const T paramUpdateNormLimit = 1e-6,
+      const T paramUpdateNormLimit = 0,
       size_t *elapsedSteps = NULL, 
       double *elapsedTime = NULL 
       ) {
@@ -86,22 +86,26 @@ class Gauss_Newton{
 //        std::cout << "reducedResidual: " << std::endl <<
 //          reducedResidual.transpose() << std::endl; 
 
-        ParamT paramUpdate;
-        paramUpdate.noalias() = residualHessianLDL.solve(reducedResidual);
+        // This equation solves the parameter update, but with signs negated
+        ParamT negParamUpdate;
+        negParamUpdate.noalias() = residualHessianLDL.solve(reducedResidual);
 
-        curParam -= paramUpdate;
+        // Subtract the negated update (i.e., add the correct-sign update!)
+        curParam -= negParamUpdate;
 
 
         //check for convergence
-        if(paramUpdate.norm() < paramUpdateNormLimit) {
-          break; 
+        if(paramUpdateNormLimit > 0) {
+          if(negParamUpdate.norm() < paramUpdateNormLimit) {
+            break; 
+          }
         }
       }
 
       *finalParam = curParam;
 
       if(NULL != elapsedSteps) {
-        *elapsedSteps = step + 1; 
+        *elapsedSteps = step; 
       }
 
       if(NULL != elapsedTime) { 
@@ -263,30 +267,8 @@ class Gauss_Newton{
             newVol->wrapIndex(curPoint(2))
           ); 
       }
-
-      
-//      std::cout << "param:" << std::endl <<
-//        *param << std::endl;
-      
-//      std::cout << "pointList(0):" << std::endl <<
-//        pointList.col(0) << std::endl;
-      
-//      std::cout << "transformedPointList(0):" << std::endl <<
-//        transformedPointList.col(0) << std::endl;
-      
-//      std::cout << "interp(0,0,0):" << std::endl <<
-//        interpRef->interp(0,0,0) << std::endl;
-
-//      std::cout << "interpPoints:" << std::endl <<
-//        interpPoints.head(10) << std::endl;
-      
-//      std::cout << "newVolVec:" << std::endl <<
-//        newVolVec->head(10) << std::endl;
-
-      residual.noalias() = (*newVolVec) - interpPoints;
-      
-//      std::cout << "residual:" << std::endl <<
-//        residual.head(10) << std::endl;
+  
+      residual.noalias() = interpPoints - (*newVolVec);
     }
 
   protected:
