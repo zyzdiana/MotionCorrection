@@ -12,6 +12,10 @@ class FFTWBuffer {
     FFTWBuffer(size_t numElements);
     ~FFTWBuffer();
 
+    size_t size() {
+      return this->numElements; 
+    }
+
     T& at(size_t index) {
       #ifdef DEBUG
       if(index >= numElements) {
@@ -35,9 +39,7 @@ class FFTWBuffer {
 
   protected:
     T *buffer;
-    #ifdef DEBUG
     const size_t numElements;
-    #endif
 };
 
 #endif

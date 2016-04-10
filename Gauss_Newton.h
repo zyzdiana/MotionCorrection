@@ -39,7 +39,10 @@ class Gauss_Newton{
         &residualGradient, &approxResidualHessian,
         refdz, refdy, refdx, cubeSize, cubeCenter,
         gradientAndHessianComputeTime);
-      
+     
+//      std::cout << "approxResidualHessian:" << std::endl <<
+//        approxResidualHessian << std::endl;
+
       residualHessianLDL.compute(approxResidualHessian);
 
       generatePointList(&pointList, cubeSize, cubeCenter);
@@ -77,13 +80,20 @@ class Gauss_Newton{
 
         computeResidual(newVolume, &newVolVec, &curParam);
 
+//        std::cout << "residual[0]: " << residual(0) << std::endl;
+//        std::cout << "residualGradient.col(0): " << std::endl <<
+//          residualGradient.col(0) << std::endl;
+
         // at this point we could check if this new residual is better
         // than the previous residual, and if not, we could respond
         // by taking some other search step. This test can be expensive,
         // though, so for right now we skip it and hope things are improving
 
         reducedResidual.noalias() = residualGradient * residual;
-      
+     
+//        std::cout << "reducedResidual: " << std::endl <<
+//          reducedResidual << std::endl;
+
         // This equation solves the parameter update, but with signs negated
         ParamT negParamUpdate;
         negParamUpdate.noalias() = residualHessianLDL.solve(reducedResidual);
@@ -95,6 +105,7 @@ class Gauss_Newton{
         //checks for convergence
         if(paramUpdate2NormLimit > 0) {
           if(negParamUpdate.norm() < paramUpdate2NormLimit) {
+            step++; 
             break; 
           }
         }
@@ -107,6 +118,7 @@ class Gauss_Newton{
               (std::abs(negParamUpdate(i)) >  paramUpdateInfinityNormLimit);
           }
           if (! largerThanLimit) {
+            step++; 
             break;
           }
         }
@@ -277,7 +289,10 @@ class Gauss_Newton{
             newVol->wrapIndex(curPoint(2))
           ); 
       }
-  
+ 
+//      std::cout << "interpPoints[0]: " << interpPoints(0) << std::endl;
+//      std::cout << "newVolVec[0]: " << (*newVolVec)(0) << std::endl;
+
       residual.noalias() = interpPoints - (*newVolVec);
     }
 

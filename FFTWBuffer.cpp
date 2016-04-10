@@ -5,9 +5,7 @@
 
 template <>
 FFTWBuffer<float>::FFTWBuffer(size_t numElements) :
-  #ifdef DEBUG
-  numElements(numElements)
-  #endif
+  numElements(numElements),
   buffer((float*) fftwf_malloc(numElements * sizeof(float))) {
 }
 
@@ -18,9 +16,7 @@ FFTWBuffer<float>::~FFTWBuffer() {
 
 template <>
 FFTWBuffer< std::complex<float> >::FFTWBuffer(size_t numElements) :
-  #ifdef DEBUG
-  numElements(numElements)
-  #endif
+  numElements(numElements),
   buffer((std::complex<float>*) fftwf_malloc(numElements * sizeof(std::complex<float>))) {
 }
 
@@ -32,9 +28,7 @@ FFTWBuffer< std::complex<float> >::~FFTWBuffer() {
 
 template <>
 FFTWBuffer<double>::FFTWBuffer(size_t numElements) :
-  #ifdef DEBUG
-  numElements(numElements)
-  #endif
+  numElements(numElements),
   buffer((double*) fftw_malloc(numElements * sizeof(double))) {
 }
 
@@ -45,9 +39,7 @@ FFTWBuffer<double>::~FFTWBuffer() {
 
 template <>
 FFTWBuffer< std::complex<double> >::FFTWBuffer(size_t numElements) :
-  #ifdef DEBUG
-  numElements(numElements)
-  #endif
+  numElements(numElements),
   buffer((std::complex<double>*) fftw_malloc(numElements * sizeof(std::complex<double>))) {
 }
 
