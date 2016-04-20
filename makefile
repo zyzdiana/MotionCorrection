@@ -1,5 +1,5 @@
-#VERSION = DEBUG
-VERSION = RELEASE
+VERSION = DEBUG
+#VERSION = RELEASE
 
 #CXXFLAGS += -I./
 CXXFLAGS += -I/Users/dylan/Documents/Research/Students/Diana/MotionCorrection
@@ -61,7 +61,8 @@ TESTOBJECTS += TricubicInterpolator_tests.o
 TESTOBJECTS += CubicBSplineInterpolator_tests.o
 TESTOBJECTS += FFTOp_tests.o
 TESTOBJECTS += FFTOp.o
-TESTOBJECTS += Gauss_Newton_tests.o
+TESTOBJECTS += Gauss_Newton_Ref_Grad_tests.o
+TESTOBJECTS += Gauss_Newton_New_Grad_tests.o
 
 test: $(TESTOBJECTS)
 
