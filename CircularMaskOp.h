@@ -46,25 +46,66 @@ class CircularMaskOpFunction {
     const T eightOverThree;    
 };
 
+template < typename VolumeT, typename value_type >
+class CircularMaskOp_Base {
+  protected:
+    typedef Eigen::Map< Eigen::Matrix<value_type, Eigen::Dynamic, 1> >
+      VolumeMapT;
+
+  public:
+    CircularMaskOp_Base(const size_t cubeSize) :
+      cubeSize(cubeSize),
+      volMask(cubeSize),
+      volMaskMap(volMask.buffer, volMask.totalPoints)
+      {}
+
+    void applyMask(VolumeT *vol) const {
+      VolumeMapT volMap(vol->buffer, vol->totalPoints);
+
+      volMap = volMap.array() * volMaskMap.array();
+    }
+    
+    void applyMask(const VolumeT *inVol, const VolumeT *outVol) const {
+      VolumeMapT inVolMap(inVol->buffer, inVol->totalPoints);
+      VolumeMapT outVolMap(outVol->buffer, outVol->totalPoints);
+
+      outVolMap.noalias() = inVolMap.array() * volMaskMap.array();
+    }
+
+  protected:
+    size_t cubeSize;
+    size_t lastDim;
+    VolumeT volMask;
+    VolumeMapT volMaskMap;
+};
+
 template < typename AtAddressableT, typename T >
 class CircularMaskOp {
 };
 
 
 template < typename AtAddressableT, typename T>
-class CircularMaskOp< SymmetricHalfVolumeAtAddressable<AtAddressableT>, T > {
+class CircularMaskOp< SymmetricHalfVolumeAtAddressable<AtAddressableT>, T > :
+  public CircularMaskOp_Base<
+    SymmetricHalfVolumeAtAddressable<AtAddressableT>,
+    typename AtAddressableT::value_type
+    >
+    {
   public:
     typedef typename AtAddressableT::value_type value_type;
     typedef SymmetricHalfVolumeAtAddressable<AtAddressableT>
       SymmetricHalfVolT;
 
+    typedef CircularMaskOp_Base<
+      SymmetricHalfVolumeAtAddressable<AtAddressableT>,
+      typename AtAddressableT::value_type
+      > Parent;
+
     CircularMaskOp(const size_t cubeSize) :
-      cubeSize(cubeSize),
-      lastDim(SymmetricHalfVolT::getLastFourierDimension(cubeSize)),
-      halfVolMask(cubeSize),
-      halfVolMaskMap(halfVolMask.buffer, halfVolMask.totalPoints),
+      Parent(cubeSize),
       maskFunction(cubeSize)
     {
+      const size_t lastDim = SymmetricHalfVolT::getLastFourierDimension(cubeSize);
       size_t offset = 0;
       for(int z = 0; z < cubeSize; z++) {
         int zIndex = z;
@@ -84,41 +125,33 @@ class CircularMaskOp< SymmetricHalfVolumeAtAddressable<AtAddressableT>, T > {
               xIndex -= cubeSize; 
             }
 
-            halfVolMask.at(offset) =
+            this->volMask.at(offset) =
               maskFunction.maskValue(zIndex, yIndex, xIndex);
           }
         }
       }
     }
 
-    void applyMask(SymmetricHalfVolT *halfVol) const {
-      HalfVolMapT halfVolMap(halfVol->buffer, halfVol->totalPoints);
-
-      halfVolMap = halfVolMap.array() * halfVolMaskMap.array();
-    }
-
-
   protected:
-    typedef Eigen::Map< Eigen::Matrix<value_type, Eigen::Dynamic, 1> >
-      HalfVolMapT;
-
-    size_t cubeSize;
-    size_t lastDim;
-    SymmetricHalfVolT halfVolMask;
-    HalfVolMapT halfVolMaskMap;
     CircularMaskOpFunction<T> maskFunction;
 };
 
 template < typename AtAddressableT, typename T>
-class CircularMaskOp< VolumeAtAddressable<AtAddressableT>, T > {
+class CircularMaskOp< VolumeAtAddressable<AtAddressableT>, T > :
+  public CircularMaskOp_Base<
+    VolumeAtAddressable<AtAddressableT>,
+    typename AtAddressableT::value_type
+    > {
   public:
     typedef typename AtAddressableT::value_type value_type;
     typedef VolumeAtAddressable<AtAddressableT> VolumeT;
+    typedef CircularMaskOp_Base<
+      VolumeAtAddressable<AtAddressableT>,
+      typename AtAddressableT::value_type
+      > Parent;
 
     CircularMaskOp(const size_t cubeSize) :
-      cubeSize(cubeSize),
-      volMask(cubeSize),
-      volMaskMap(volMask.buffer, volMask.totalPoints),
+      Parent(cubeSize),
       maskFunction(cubeSize)
     {
       size_t offset = 0;
@@ -131,27 +164,14 @@ class CircularMaskOp< VolumeAtAddressable<AtAddressableT>, T > {
         for(T y = startIndex; y < endIndex; y += ((T) 1.0)) {
           
           for(T x = startIndex; x < endIndex; x += ((T) 1.0), offset++) {
-            volMask.at(offset) =
+            this->volMask.at(offset) =
               maskFunction.maskValue(z, y, x);
           }
         }
       }
     }
 
-    void applyMask(VolumeT *vol) const {
-      VolumeMapT volMap(vol->buffer, vol->totalPoints);
-
-      volMap = volMap.array() * volMaskMap.array();
-    }
-
   protected:
-    typedef Eigen::Map< Eigen::Matrix<value_type, Eigen::Dynamic, 1> >
-      VolumeMapT;
-
-    size_t cubeSize;
-    size_t lastDim;
-    VolumeT volMask;
-    VolumeMapT volMaskMap;
     CircularMaskOpFunction<T> maskFunction;
 };
 

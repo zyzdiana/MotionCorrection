@@ -51,16 +51,16 @@ test_tricubic:
 test_gn:
 
 #test: BinaryFile_tests.o interp3D_tests.o
+TESTOBJECTS += FFTWBuffer.o
+TESTOBJECTS += FFTOp.o
 TESTOBJECTS += BinaryFile_tests.o
 TESTOBJECTS += Volume_tests.o
 TESTOBJECTS += FFTWBuffer_tests.o
-TESTOBJECTS += FFTWBuffer.o
 TESTOBJECTS += CentralDifferenceDifferentiator_tests.o
 TESTOBJECTS += TrilinearInterpolator_tests.o
 TESTOBJECTS += TricubicInterpolator_tests.o
 TESTOBJECTS += CubicBSplineInterpolator_tests.o
 TESTOBJECTS += FFTOp_tests.o
-TESTOBJECTS += FFTOp.o
 TESTOBJECTS += Gauss_Newton_Ref_Grad_tests.o
 TESTOBJECTS += Gauss_Newton_New_Grad_tests.o
 TESTOBJECTS += CircularMaskOp_tests.o
