@@ -65,11 +65,15 @@ class CircularMaskOp_Base {
       volMap = volMap.array() * volMaskMap.array();
     }
     
-    void applyMask(const VolumeT *inVol, const VolumeT *outVol) const {
+    void applyMask(Eigen::Matrix<value_type, Eigen::Dynamic, 1> *vol) const {
+      vol->array() = vol->array() * volMaskMap.array();
+    }
+    
+    void applyMask(const VolumeT *inVol, VolumeT *outVol) const {
       VolumeMapT inVolMap(inVol->buffer, inVol->totalPoints);
       VolumeMapT outVolMap(outVol->buffer, outVol->totalPoints);
 
-      outVolMap.noalias() = inVolMap.array() * volMaskMap.array();
+      outVolMap.array() = inVolMap.array() * volMaskMap.array();
     }
 
   protected:
