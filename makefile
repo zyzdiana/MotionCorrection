@@ -63,6 +63,7 @@ TESTOBJECTS += FFTOp_tests.o
 TESTOBJECTS += FFTOp.o
 TESTOBJECTS += Gauss_Newton_Ref_Grad_tests.o
 TESTOBJECTS += Gauss_Newton_New_Grad_tests.o
+TESTOBJECTS += CircularMaskOp_tests.o
 
 test: $(TESTOBJECTS)
 
