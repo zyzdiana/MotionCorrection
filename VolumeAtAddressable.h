@@ -3,6 +3,10 @@
 
 #include <cmath>
 
+#ifdef LINUX
+#include <cstddef>
+#endif
+
 template < typename AtAddressableT >
 class VolumeAtAddressable : public AtAddressableT {
   public:

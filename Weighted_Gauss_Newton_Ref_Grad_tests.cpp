@@ -85,7 +85,7 @@ TEST_CASE("a weighted Gauss-Newton minimizer using reference-image gradients can
 }
 
 
-TEST_CASE("a Gauss-Newton minimizer using reference-image gradients can be instantiated from image data") {
+TEST_CASE("a weighted Gauss-Newton minimizer using reference-image gradients can be instantiated from image data") {
   typedef float dataT;
   typedef VolumeAtAddressable< FFTWBuffer<dataT> > VolumeT; 
   typedef CubicBSplineInterpolator<VolumeT, float> InterpolatorT; 

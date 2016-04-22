@@ -1,7 +1,7 @@
 #ifndef SymmetricHalfVolumeAtAddressable_h
 #define SymmetricHalfVolumeAtAddressable_h
 
-#include <ctgmath>
+#include <cmath>
 
 template < typename AtAddressableT >
 class SymmetricHalfVolumeAtAddressable : public AtAddressableT {

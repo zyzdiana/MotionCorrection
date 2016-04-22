@@ -1,9 +1,9 @@
 #VERSION = DEBUG
 VERSION = RELEASE
 
-#CXXFLAGS += -I./
-CXXFLAGS += -I/Users/dylan/Documents/Research/Students/Diana/MotionCorrection
-CXXFLAGS += -I/usr/local/include
+CXXFLAGS += -I./
+#CXXFLAGS += -I/Users/dylan/Documents/Research/Students/Diana/MotionCorrection
+#CXXFLAGS += -I/usr/local/include
 #CXXFLAGS += -I/Users/zyzdiana/GitHub/MotionCorrection/
 
 LDFLAGS += -L/usr/local/lib
@@ -30,7 +30,10 @@ endif
 
 ifeq ($(UNAME), Linux)
 CXX = g++
+CXXFLAGS += -std=c++0x
 CXXFLAGS += -DLINUX
+CXXFLAGS += -I/space/oribi/1/users/tisdall/include
+LDFLAGS += -L/space/oribi/1/users/tisdall/lib
 endif
 
 

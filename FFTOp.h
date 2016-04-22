@@ -7,6 +7,8 @@
 
 #include "fftw3.h"
 
+#include <complex>
+
 template <typename T>
 class FFTWPlanType {
 };

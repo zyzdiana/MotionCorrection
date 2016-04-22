@@ -2,7 +2,6 @@
 
 #include <complex>
 
-
 template <>
 typename FFTWPlanType<float>::PlanType
 FFTOp<float>::createForwardPlan(size_t cubeSize) {
