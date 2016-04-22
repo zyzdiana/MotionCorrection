@@ -10,3 +10,4 @@ test_interp
 test_read_file
 test_time_profiler
 test_tricubic
+fit_nav_reps

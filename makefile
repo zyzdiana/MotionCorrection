@@ -1,5 +1,5 @@
-VERSION = DEBUG
-#VERSION = RELEASE
+#VERSION = DEBUG
+VERSION = RELEASE
 
 #CXXFLAGS += -I./
 CXXFLAGS += -I/Users/dylan/Documents/Research/Students/Diana/MotionCorrection
@@ -50,20 +50,22 @@ test_tricubic:
 
 test_gn:
 
+fit_nav_reps: FFTWBuffer.o FFTOp.o
+
 #test: BinaryFile_tests.o interp3D_tests.o
 TESTOBJECTS += FFTWBuffer.o
 TESTOBJECTS += FFTOp.o
-#TESTOBJECTS += BinaryFile_tests.o
-#TESTOBJECTS += Volume_tests.o
-#TESTOBJECTS += FFTWBuffer_tests.o
-#TESTOBJECTS += CentralDifferenceDifferentiator_tests.o
-#TESTOBJECTS += TrilinearInterpolator_tests.o
-#TESTOBJECTS += TricubicInterpolator_tests.o
-#TESTOBJECTS += CubicBSplineInterpolator_tests.o
-#TESTOBJECTS += FFTOp_tests.o
-#TESTOBJECTS += Gauss_Newton_Ref_Grad_tests.o
-#TESTOBJECTS += Gauss_Newton_New_Grad_tests.o
-#TESTOBJECTS += CircularMaskOp_tests.o
+TESTOBJECTS += BinaryFile_tests.o
+TESTOBJECTS += Volume_tests.o
+TESTOBJECTS += FFTWBuffer_tests.o
+TESTOBJECTS += CentralDifferenceDifferentiator_tests.o
+TESTOBJECTS += TrilinearInterpolator_tests.o
+TESTOBJECTS += TricubicInterpolator_tests.o
+TESTOBJECTS += CubicBSplineInterpolator_tests.o
+TESTOBJECTS += FFTOp_tests.o
+TESTOBJECTS += Gauss_Newton_Ref_Grad_tests.o
+TESTOBJECTS += Gauss_Newton_New_Grad_tests.o
+TESTOBJECTS += CircularMaskOp_tests.o
 TESTOBJECTS += Weighted_Gauss_Newton_Ref_Grad_tests.o
 
 test: $(TESTOBJECTS)
@@ -71,6 +73,7 @@ test: $(TESTOBJECTS)
 clean:
 	rm -f *.o
 	rm -f test
+	rm -f fit_nav_reps
 	rm -f test_read_file
 	rm -f test_interp
 	rm -f test_time_profiler

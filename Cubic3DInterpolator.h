@@ -6,6 +6,8 @@
 #include <Eigen/Dense>
 #include <cmath>
 
+#include <vector>
+
 template <typename VolumeT, typename CoordT>
 class Cubic3DInterpolator : public Interpolator3D<VolumeT, CoordT> {
   public:
