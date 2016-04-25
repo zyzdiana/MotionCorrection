@@ -1,5 +1,6 @@
 #include "Weighted_Gauss_Newton_Ref_Grad.h"
 
+#include "TricubicInterpolator.h"
 #include "CubicBSplineInterpolator.h"
 #include "VolumeAtAddressable.h"
 
@@ -23,7 +24,8 @@
 int main(int argc, char* argv[]) {
   typedef float dataT;
   typedef VolumeAtAddressable< FFTWBuffer<dataT> > VolumeT; 
-  typedef CubicBSplineInterpolator<VolumeT, float> InterpolatorT; 
+  typedef TricubicInterpolator<VolumeT, float> TricubicInterpolatorT; 
+  typedef CubicBSplineInterpolator<VolumeT, float> CubicBSplineInterpolatorT; 
   
   size_t cubeSize;
   std::string basePath;
@@ -57,10 +59,10 @@ int main(int argc, char* argv[]) {
   typedef CircularMaskOp< DataVolumeT, dataT> DataCircularMaskOpT;
   typedef CircularMaskOp< ComplexVolumeT, dataT> ComplexDataCircularMaskOpT;
   typedef Weighted_Gauss_Newton_Ref_Grad<
-    InterpolatorT, DataCircularMaskOpT > MinimizerT; 
+    TricubicInterpolatorT, DataCircularMaskOpT > TricubicMinimizerT; 
   typedef Weighted_Gauss_Newton_Ref_Grad<
-    InterpolatorT, DataCircularMaskOpT> MinimizerT; 
-  typedef MinimizerT::ParamT ParamT;
+    CubicBSplineInterpolatorT, DataCircularMaskOpT > CubicBSplineMinimizerT; 
+  typedef CubicBSplineMinimizerT::ParamT ParamT;
   
   ComplexDataCircularMaskOpT fourierMaskOp(cubeSize);
   DataVolumeT maskedRefVolume(cubeSize);
@@ -93,7 +95,7 @@ int main(int argc, char* argv[]) {
     }
 
 
-    InterpolatorT interpolator(&maskedRefVolume);
+    CubicBSplineInterpolatorT cubicBSplineInterpolator(&maskedRefVolume);
   
     CentralDifferencesDifferentiator<VolumeT> volDiffer(&maskedRefVolume);
     VolumeT dx(cubeSize, cubeVectorLength);
@@ -105,13 +107,36 @@ int main(int argc, char* argv[]) {
     VolumeT dz(cubeSize, cubeVectorLength);
     volDiffer.zDerivative(&dz);
     
-    double gradientAndHessianComputeTime;
+    CentralDifferencesDifferentiator<VolumeT> dxDiffer(&dx);
+   
+    VolumeT dxy(cubeSize, cubeVectorLength);
+    dxDiffer.yDerivative(&dxy);
     
+    VolumeT dxz(cubeSize, cubeVectorLength);
+    dxDiffer.zDerivative(&dxz);
+
+    CentralDifferencesDifferentiator<VolumeT> dyDiffer(&dy);
+
+    VolumeT dyz(cubeSize, cubeVectorLength);
+    dyDiffer.zDerivative(&dyz);
+
+    CentralDifferencesDifferentiator<VolumeT> dxyDiffer(&dxy);
+    
+    VolumeT dxyz(cubeSize, cubeVectorLength);
+    dxyDiffer.zDerivative(&dxyz);
+     
+    TricubicInterpolatorT tricubicInterpolator(&maskedRefVolume,
+      &dx, &dy, &dz, &dxy, &dxz, &dyz, &dxyz);
+
     DataCircularMaskOpT imageMaskOp(cubeSize);
   
-    MinimizerT minimizer(&interpolator, &imageMaskOp,
-      &dz, &dy, &dx,
-      &gradientAndHessianComputeTime);
+    CubicBSplineMinimizerT cubicBSplineMinimizer(
+      &cubicBSplineInterpolator, &imageMaskOp,
+      &dz, &dy, &dx, NULL);
+    
+    TricubicMinimizerT tricubicMinimizer(
+      &tricubicInterpolator, &imageMaskOp,
+      &dz, &dy, &dx, NULL);
           
     DataVolumeT maskedNewVolume(cubeSize);
     VolumeT newVolume(cubeSize);
@@ -142,19 +167,32 @@ int main(int argc, char* argv[]) {
       const dataT paramUpdate2NormLimit = 0;
       const dataT paramUpdateInfinityNormLimit = 1e-6;
      
-      double elapsedTime;
-      size_t elapsedSteps;
+      double tricubicElapsedTime;
+      size_t tricubicElapsedSteps;
       
-      minimizer.minimize(&maskedNewVolume, &initialParam, &finalParam,
+      tricubicMinimizer.minimize(&maskedNewVolume, &initialParam, &finalParam,
         maxSteps, paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-        &elapsedSteps, &elapsedTime);
+        &tricubicElapsedSteps, &tricubicElapsedTime);
+      
+      outputFile << tricubicElapsedTime << " " << tricubicElapsedSteps
+        << " " << finalParam.transpose() << std::endl;
+      
+      double cubicBSplineElapsedTime;
+      size_t cubicBSplineElapsedSteps;
+      
+      cubicBSplineMinimizer.minimize(&maskedNewVolume, &initialParam, &finalParam,
+        maxSteps, paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+        &cubicBSplineElapsedSteps, &cubicBSplineElapsedTime); 
+      
+      outputFile << cubicBSplineElapsedTime << " " << cubicBSplineElapsedSteps
+        << " " << finalParam.transpose() << std::endl;
      
       std::cout << "----------" << std::endl;
       std::cout << "step " << i << std::endl;
-      std::cout << "elapsed time: " << elapsedTime << " ms" << std::endl;
-      std::cout << "elapsed steps: " << elapsedSteps << std::endl;
-      std::cout << "finalParam: " << finalParam.transpose() << std::endl;
-      outputFile << elapsedTime << " " << elapsedSteps << " " << finalParam.transpose() << std::endl;
+      std::cout << "tricubic elapsed time: " << tricubicElapsedTime << " ms" << std::endl;
+      std::cout << "tricubic elapsed steps: " << tricubicElapsedSteps << std::endl;
+      std::cout << "cubic B-spline elapsed time: " << cubicBSplineElapsedTime << " ms" << std::endl;
+      std::cout << "cubic B-spline elapsed steps: " << cubicBSplineElapsedSteps << std::endl;
     }
   }
 
