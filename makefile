@@ -1,9 +1,9 @@
 #VERSION = DEBUG
 VERSION = RELEASE
 
-CXXFLAGS += -I./
-#CXXFLAGS += -I/Users/dylan/Documents/Research/Students/Diana/MotionCorrection
-#CXXFLAGS += -I/usr/local/include
+#CXXFLAGS += -I./
+CXXFLAGS += -I/Users/dylan/Documents/Research/Students/Diana/MotionCorrection
+CXXFLAGS += -I/usr/local/include
 #CXXFLAGS += -I/Users/zyzdiana/GitHub/MotionCorrection/
 
 LDFLAGS += -L/usr/local/lib
