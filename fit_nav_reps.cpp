@@ -56,8 +56,10 @@ int main(int argc, char* argv[]) {
   typedef FFTOp<dataT> DataFFTOpT;
   typedef DataFFTOpT::spatialVolumeT DataVolumeT; 
   typedef DataFFTOpT::fourierVolumeT ComplexVolumeT; 
-  typedef CircularMaskOp< DataVolumeT, dataT> DataCircularMaskOpT;
-  typedef CircularMaskOp< ComplexVolumeT, dataT> ComplexDataCircularMaskOpT;
+  typedef CircularMaskOp< DataVolumeT, DataVolumeT> DataCircularMaskOpT;
+  typedef CircularMaskOp< ComplexVolumeT, 
+    SymmetricHalfVolumeAtAddressable< FFTWBuffer<dataT> > >
+    ComplexDataCircularMaskOpT;
   typedef Weighted_Gauss_Newton_Ref_Grad<
     TricubicInterpolatorT, DataCircularMaskOpT > TricubicMinimizerT; 
   typedef Weighted_Gauss_Newton_Ref_Grad<
@@ -72,7 +74,10 @@ int main(int argc, char* argv[]) {
   DataFFTOpT fftOp(cubeSize);
   std::ofstream outputFile(outputPath);
 
-  for(int baseIndex = 0; baseIndex <= 36; baseIndex += 36) {
+  size_t step = 0;
+
+//  for(int baseIndex = 0; baseIndex <= 36; baseIndex += 36) {
+  for(int baseIndex = 36; baseIndex <= 36; baseIndex += 36) {
 
     {
       VolumeT refVolume(cubeSize);
@@ -88,12 +93,14 @@ int main(int argc, char* argv[]) {
       }
        
       fftOp.forward(&refVolume, &fourierData);
-      
+
       fourierMaskOp.applyMask(&fourierData); 
           
       fftOp.backward(&fourierData, &maskedRefVolume);
     }
 
+    BinaryFile<VolumeT>::write(&maskedRefVolume,
+      "debug_filtered_ref_volume.dat");
 
     CubicBSplineInterpolatorT cubicBSplineInterpolator(&maskedRefVolume);
   
@@ -142,8 +149,8 @@ int main(int argc, char* argv[]) {
     VolumeT newVolume(cubeSize);
     ParamT initialParam;
     ParamT finalParam;
-    
-    for(unsigned int i = baseIndex + 1; i < baseIndex + 36; i++) { 
+ 
+    for(unsigned int i = baseIndex + 1; i < baseIndex + 36; i++, step++) { 
       std::stringstream newPath;
       newPath << basePath << i << ".dat";
       
@@ -162,7 +169,9 @@ int main(int argc, char* argv[]) {
       
       initialParam << 0, 0, 0, 0, 0, 0;
       
-      size_t maxSteps = 20;
+      const size_t maxSteps = 50;
+      const dataT stepSizeScale = 0.25;
+      const dataT stepSizeLimit = 1e-5;
   
       const dataT paramUpdate2NormLimit = 0;
       const dataT paramUpdateInfinityNormLimit = 1e-6;
@@ -171,7 +180,8 @@ int main(int argc, char* argv[]) {
       size_t tricubicElapsedSteps;
       
       tricubicMinimizer.minimize(&maskedNewVolume, &initialParam, &finalParam,
-        maxSteps, paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+        maxSteps, stepSizeScale, stepSizeLimit,
+        paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
         &tricubicElapsedSteps, &tricubicElapsedTime);
       
       outputFile << tricubicElapsedTime << " " << tricubicElapsedSteps
@@ -181,14 +191,15 @@ int main(int argc, char* argv[]) {
       size_t cubicBSplineElapsedSteps;
       
       cubicBSplineMinimizer.minimize(&maskedNewVolume, &initialParam, &finalParam,
-        maxSteps, paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+        maxSteps, stepSizeScale, stepSizeLimit,
+        paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
         &cubicBSplineElapsedSteps, &cubicBSplineElapsedTime); 
       
       outputFile << cubicBSplineElapsedTime << " " << cubicBSplineElapsedSteps
         << " " << finalParam.transpose() << std::endl;
      
       std::cout << "----------" << std::endl;
-      std::cout << "step " << i << std::endl;
+      std::cout << "step " << step << std::endl;
       std::cout << "tricubic elapsed time: " << tricubicElapsedTime << " ms" << std::endl;
       std::cout << "tricubic elapsed steps: " << tricubicElapsedSteps << std::endl;
       std::cout << "cubic B-spline elapsed time: " << cubicBSplineElapsedTime << " ms" << std::endl;

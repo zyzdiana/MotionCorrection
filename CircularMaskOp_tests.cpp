@@ -17,8 +17,10 @@ TEST_CASE("A circular mask can be instantiated") {
     typedef FFTOp<dataT> DataFFTOpT;
     typedef DataFFTOpT::spatialVolumeT DataVolumeT; 
     typedef DataFFTOpT::fourierVolumeT ComplexVolumeT; 
-    typedef CircularMaskOp< DataVolumeT, dataT> DataCircularMaskOpT;
-    typedef CircularMaskOp< ComplexVolumeT, dataT> ComplexDataCircularMaskOpT;
+    typedef CircularMaskOp< DataVolumeT, DataVolumeT> DataCircularMaskOpT;
+    typedef CircularMaskOp< ComplexVolumeT,
+      SymmetricHalfVolumeAtAddressable< FFTWBuffer<dataT> > >
+      ComplexDataCircularMaskOpT;
 
     const size_t cubeSize = 32;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
@@ -33,26 +35,49 @@ TEST_CASE("A circular mask can be instantiated") {
     SECTION("and masking in the Fourier domain gives the precomputed answers") {
       ComplexDataCircularMaskOpT fourierMaskOp(cubeSize);
       ComplexVolumeT fourierData(cubeSize);
+      ComplexVolumeT maskedFourierData(cubeSize);
       DataFFTOpT fftOp(cubeSize);
 
       fftOp.forward(&initialData, &fourierData);
       
-      fourierMaskOp.applyMask(&fourierData); 
-       
-      DataVolumeT resultData(cubeSize);
+      fourierMaskOp.applyMask(&fourierData, &maskedFourierData); 
       
-      fftOp.backward(&fourierData, &resultData);
-    
-      size_t pointsLength = resultData.totalPoints;
-      std::vector<dataT> solutionData(pointsLength);
-    
-      REQUIRE(pointsLength * sizeof(dataT)
-            == BinaryFile< std::vector<dataT> >::read(&solutionData,
-                "CircularMaskOp_tests/CircularMaskOpFourierOutput.dat"));
+      SECTION("in the Fourier domain") { 
+        size_t pointsLength = fourierData.totalPoints;
+        std::vector<complexT> solutionData(pointsLength); 
+        
+        REQUIRE(pointsLength * sizeof(complexT)
+              == BinaryFile< std::vector<complexT> >::read(&solutionData,
+                  "CircularMaskOp_tests/CircularMaskOpFourierDomainOutput.dat"));
 
-      for(size_t i = 0; i < pointsLength; i++) {
-        INFO("i: " << i);
-        REQUIRE(resultData.at(i) == Approx(solutionData[i]).epsilon(0.005));
+        for(size_t i = 0; i < pointsLength; i++) {
+          INFO("i: " << i);
+          INFO("fourierData.at(i): " << fourierData.at(i));
+          INFO("maskedFourierData.at(i): " << maskedFourierData.at(i));
+          INFO("solutionData[i]: " << solutionData[i]);
+          REQUIRE(maskedFourierData.at(i).real() == Approx(solutionData[i].real()));
+          REQUIRE(maskedFourierData.at(i).imag() == Approx(solutionData[i].imag()));
+        }
+      }
+       
+    
+
+      SECTION("in the image domain") { 
+        DataVolumeT resultData(cubeSize);
+     
+        fftOp.backward(&maskedFourierData, &resultData);
+
+        size_t pointsLength = resultData.totalPoints;
+        std::vector<dataT> solutionData(pointsLength); 
+        
+        REQUIRE(pointsLength * sizeof(dataT)
+              == BinaryFile< std::vector<dataT> >::read(&solutionData,
+                  "CircularMaskOp_tests/CircularMaskOpFourierOutput.dat"));
+
+        for(size_t i = 0; i < pointsLength; i++) {
+          INFO("i: " << i);
+          REQUIRE(resultData.at(i) == Approx(solutionData[i]).epsilon(0.0005));
+        }
       }
     }
     

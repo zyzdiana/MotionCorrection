@@ -3,6 +3,16 @@
 
 #include "Gauss_Newton_Base.h"
 
+#include <fcntl.h>
+#include <unistd.h>
+#ifdef LINUX
+#include <stdlib.h>
+#endif 
+
+#include <iostream>
+
+#include <cfloat>
+
 template <
   typename _InterpolatorT,
   typename _CircularMaskOpT
@@ -53,6 +63,8 @@ class Weighted_Gauss_Newton_Ref_Grad : Gauss_Newton_Base<_InterpolatorT>{
       const ParamT *initialParam,
       ParamT *finalParam,
       const size_t maxSteps = 20,
+      const T stepSizeScale = 0.25,
+      const T stepSizeLimit = 0,
       const T paramUpdate2NormLimit = 0,
       const T paramUpdateInfinityNormLimit = 0,
       size_t *elapsedSteps = NULL, 
@@ -65,6 +77,11 @@ class Weighted_Gauss_Newton_Ref_Grad : Gauss_Newton_Base<_InterpolatorT>{
       }
 
       ParamT curParam = *initialParam;
+      ParamT prevParam = curParam;
+
+      T prevResidualNorm = FLT_MAX;
+
+      T stepSize = 1.0;
 
       NewVolVecT newVolVec(
         newVolume->buffer,
@@ -72,10 +89,11 @@ class Weighted_Gauss_Newton_Ref_Grad : Gauss_Newton_Base<_InterpolatorT>{
 
       ParamT reducedResidual;
       size_t step = 0;
-      
+
       for(; step < maxSteps; step++) {
 //        std::cout << "-------" << std::endl; 
 //        std::cout << "step " << step << std::endl; 
+//        std::cout << "stepSize " << stepSize << std::endl; 
 //        std::cout << "curParam: " << std::endl <<
 //          curParam.transpose() << std::endl; 
 
@@ -87,42 +105,63 @@ class Weighted_Gauss_Newton_Ref_Grad : Gauss_Newton_Base<_InterpolatorT>{
 //        std::cout << "residualGradient.col(0): " << std::endl <<
 //          residualGradient.col(0) << std::endl;
 
-        // at this point we could check if this new residual is better
-        // than the previous residual, and if not, we could respond
-        // by taking some other search step. This test can be expensive,
-        // though, so for right now we skip it and hope things are improving
+        T newResidualNorm = this->residual.norm();
+        
+//        std::cout << "newResidualNorm " << newResidualNorm << std::endl; 
 
-        reducedResidual.noalias() = this->residualGradient * this->residual;
-     
-//        std::cout << "reducedResidual: " << std::endl <<
-//          reducedResidual << std::endl;
+        // If the residual has become smaller since the last step, then proceed
+        if(newResidualNorm <= prevResidualNorm) {
+          prevResidualNorm = newResidualNorm;
+          prevParam = curParam;
 
-        // This equation solves the parameter update, but with signs negated
-        ParamT negParamUpdate;
-        negParamUpdate.noalias() = this->residualHessianLDL.solve(reducedResidual);
-
-        // Subtract the negated update (i.e., add the correct-sign update!)
-        curParam -= negParamUpdate;
-
-
-        //checks for convergence
-        if(paramUpdate2NormLimit > 0) {
-          if(negParamUpdate.norm() < paramUpdate2NormLimit) {
-            step++; 
-            break; 
+          reducedResidual.noalias() = this->residualGradient * this->residual;
+      
+  //        std::cout << "reducedResidual: " << std::endl <<
+  //          reducedResidual << std::endl;
+  
+          // This equation solves the parameter update, but with signs negated
+          ParamT negParamUpdate;
+          negParamUpdate.noalias() = this->residualHessianLDL.solve(reducedResidual);
+          
+  //        std::cout << "negParamUpdate: " << std::endl <<
+  //          negParamUpdate << std::endl;
+  
+          // Subtract the negated update (i.e., add the correct-sign update!)
+          curParam -= negParamUpdate * stepSize;
+  
+  
+          //checks for convergence
+          if(paramUpdate2NormLimit > 0) {
+            if(negParamUpdate.norm() < paramUpdate2NormLimit) {
+              step++; 
+              break; 
+            }
+          }
+  
+          if(paramUpdateInfinityNormLimit > 0) {
+            bool largerThanLimit = false;
+  
+            for (int i = 0; (! largerThanLimit) && (i < 6); ++i) {
+              largerThanLimit =  
+                (std::abs(negParamUpdate(i)) >  paramUpdateInfinityNormLimit);
+            }
+            if (! largerThanLimit) {
+              step++; 
+              break;
+            }
           }
         }
+        // If the residual has become larger since the last update, step back
+        // and reduce the step size
+        else {
+          curParam = prevParam;
+          stepSize *= stepSizeScale;
 
-        if(paramUpdateInfinityNormLimit > 0) {
-          bool largerThanLimit = false;
-
-          for (int i = 0; (! largerThanLimit) && (i < 6); ++i) {
-            largerThanLimit =  
-              (std::abs(negParamUpdate(i)) >  paramUpdateInfinityNormLimit);
-          }
-          if (! largerThanLimit) {
-            step++; 
-            break;
+          if(stepSizeLimit > 0) {
+            if(stepSizeLimit > stepSize) {
+              step++;
+              break;
+            }
           }
         }
       }
