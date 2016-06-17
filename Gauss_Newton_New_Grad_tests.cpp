@@ -120,9 +120,6 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
 
       MinimizerT minimizer(&interpolator, cubeSize);
         
-      WARN("elapsed time computing gradient and Hessian: "
-        << gradientAndHessianComputeTime << " ms");
-
       SECTION("and registering two images returns identical result to Mathematica") {
         ParamT initialParam;
         initialParam << 0, 0, 0, 0, 0, 0;
@@ -143,6 +140,10 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
           &initialParam, &finalParam,
           maxSteps, paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
           &elapsedSteps, &elapsedTime, &gradientAndHessianComputeTime);
+      
+        WARN("elapsed time computing gradient and Hessian: "
+          << gradientAndHessianComputeTime << " ms");
+
 
         std::vector<dataT> paramSolution(6);
 
