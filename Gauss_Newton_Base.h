@@ -257,6 +257,85 @@ class Gauss_Newton_Base{
 
       residual.noalias() = interpPoints - (*newVolVec);
     }
+    
+    void minimize(
+      const VolumeT *newVolume,
+      const ParamT *initialParam,
+      ParamT *finalParam,
+      const size_t maxSteps,
+      const T paramUpdate2NormLimit,
+      const T paramUpdateInfinityNormLimit,
+      size_t *elapsedSteps
+      ) {
+
+      ParamT curParam = *initialParam;
+
+      NewVolVecT newVolVec(
+        newVolume->buffer,
+        this->cubeSize * this->cubeSize * this->cubeSize, 1);
+
+      ParamT reducedResidual;
+      size_t step = 0;
+      
+      for(; step < maxSteps; step++) {
+//        std::cout << "-------" << std::endl; 
+//        std::cout << "step " << step << std::endl; 
+//        std::cout << "curParam: " << std::endl <<
+//          curParam.transpose() << std::endl; 
+
+        this->computeResidual(newVolume, &newVolVec, &curParam);
+
+//        std::cout << "residual[0]: " << residual(0) << std::endl;
+//        std::cout << "residualGradient.col(0): " << std::endl <<
+//          residualGradient.col(0) << std::endl;
+
+        // at this point we could check if this new residual is better
+        // than the previous residual, and if not, we could respond
+        // by taking some other search step. This test can be expensive,
+        // though, so for right now we skip it and hope things are improving
+
+        reducedResidual.noalias() = this->residualGradient * this->residual;
+     
+//        std::cout << "reducedResidual: " << std::endl <<
+//          reducedResidual << std::endl;
+
+        // This equation solves the parameter update, but with signs negated
+        ParamT negParamUpdate;
+        negParamUpdate.noalias() = this->residualHessianLDL.solve(reducedResidual);
+
+        // Subtract the negated update (i.e., add the correct-sign update!)
+        curParam -= negParamUpdate;
+
+
+        //checks for convergence
+        if(paramUpdate2NormLimit > 0) {
+          if(negParamUpdate.norm() < paramUpdate2NormLimit) {
+            step++; 
+            break; 
+          }
+        }
+
+        if(paramUpdateInfinityNormLimit > 0) {
+          bool largerThanLimit = false;
+
+          for (int i = 0; (! largerThanLimit) && (i < 6); ++i) {
+            largerThanLimit =  
+              (std::abs(negParamUpdate(i)) >  paramUpdateInfinityNormLimit);
+          }
+          if (! largerThanLimit) {
+            step++; 
+            break;
+          }
+        }
+      }
+
+      *finalParam = curParam;
+
+      if(NULL != elapsedSteps) {
+        *elapsedSteps = step; 
+      }
+
+    }
 
   protected:
     const InterpolatorT *interpRef;
