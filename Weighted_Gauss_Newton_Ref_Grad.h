@@ -57,6 +57,20 @@ class Weighted_Gauss_Newton_Ref_Grad : Gauss_Newton_Base<_InterpolatorT>{
 
       this->residualHessianLDL.compute(this->approxResidualHessian);
     }
+
+  protected:
+    typedef typename Parent::NewVolVecT NewVolVecT;
+    
+    virtual void computeResidual(
+      const VolumeT *newVol,
+      const NewVolVecT *newVolVec,
+      const ParamT *param) {
+        Parent::computeResidual(newVol, newVolVec, param);
+
+        circularMaskOp->applyMask(&this->residual);
+    }
+
+  public:
     
     void minimize(
       const VolumeT *newVolume,
@@ -76,101 +90,9 @@ class Weighted_Gauss_Newton_Ref_Grad : Gauss_Newton_Base<_InterpolatorT>{
         gettimeofday(&timeBefore, NULL);
       }
 
-      ParamT curParam = *initialParam;
-      ParamT prevParam = curParam;
-
-      T prevResidualNorm = FLT_MAX;
-
-      T stepSize = 1.0;
-
-      NewVolVecT newVolVec(
-        newVolume->buffer,
-        this->cubeSize * this->cubeSize * this->cubeSize, 1);
-
-      ParamT reducedResidual;
-      size_t step = 0;
-
-      for(; step < maxSteps; step++) {
-//        std::cout << "-------" << std::endl; 
-//        std::cout << "step " << step << std::endl; 
-//        std::cout << "stepSize " << stepSize << std::endl; 
-//        std::cout << "curParam: " << std::endl <<
-//          curParam.transpose() << std::endl; 
-
-        this->computeResidual(newVolume, &newVolVec, &curParam);
-
-        circularMaskOp->applyMask(&this->residual);
-
-//        std::cout << "residual[0]: " << residual(0) << std::endl;
-//        std::cout << "residualGradient.col(0): " << std::endl <<
-//          residualGradient.col(0) << std::endl;
-
-        T newResidualNorm = this->residual.norm();
-        
-//        std::cout << "newResidualNorm " << newResidualNorm << std::endl; 
-
-        // If the residual has become smaller since the last step, then proceed
-        if(newResidualNorm <= prevResidualNorm) {
-          prevResidualNorm = newResidualNorm;
-          prevParam = curParam;
-
-          reducedResidual.noalias() = this->residualGradient * this->residual;
-      
-  //        std::cout << "reducedResidual: " << std::endl <<
-  //          reducedResidual << std::endl;
-  
-          // This equation solves the parameter update, but with signs negated
-          ParamT negParamUpdate;
-          negParamUpdate.noalias() = this->residualHessianLDL.solve(reducedResidual);
-          
-  //        std::cout << "negParamUpdate: " << std::endl <<
-  //          negParamUpdate << std::endl;
-  
-          // Subtract the negated update (i.e., add the correct-sign update!)
-          curParam -= negParamUpdate * stepSize;
-  
-  
-          //checks for convergence
-          if(paramUpdate2NormLimit > 0) {
-            if(negParamUpdate.norm() < paramUpdate2NormLimit) {
-              step++; 
-              break; 
-            }
-          }
-  
-          if(paramUpdateInfinityNormLimit > 0) {
-            bool largerThanLimit = false;
-  
-            for (int i = 0; (! largerThanLimit) && (i < 6); ++i) {
-              largerThanLimit =  
-                (std::abs(negParamUpdate(i)) >  paramUpdateInfinityNormLimit);
-            }
-            if (! largerThanLimit) {
-              step++; 
-              break;
-            }
-          }
-        }
-        // If the residual has become larger since the last update, step back
-        // and reduce the step size
-        else {
-          curParam = prevParam;
-          stepSize *= stepSizeScale;
-
-          if(stepSizeLimit > 0) {
-            if(stepSizeLimit > stepSize) {
-              step++;
-              break;
-            }
-          }
-        }
-      }
-
-      *finalParam = curParam;
-
-      if(NULL != elapsedSteps) {
-        *elapsedSteps = step; 
-      }
+      Parent::minimize(newVolume, initialParam, finalParam,
+        maxSteps, paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+        elapsedSteps);
 
       if(NULL != elapsedTime) { 
         gettimeofday(&timeAfter, NULL);
@@ -182,7 +104,6 @@ class Weighted_Gauss_Newton_Ref_Grad : Gauss_Newton_Base<_InterpolatorT>{
     }
     
   protected: 
-    typedef typename Parent::NewVolVecT NewVolVecT;
     const CircularMaskOpT *circularMaskOp;
 
 };

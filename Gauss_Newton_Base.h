@@ -228,7 +228,7 @@ class Gauss_Newton_Base{
         (*pointList);
     }
 
-    void computeResidual(
+    virtual void computeResidual(
       const VolumeT *newVol,
       const NewVolVecT *newVolVec,
       const ParamT *param) {
@@ -257,7 +257,7 @@ class Gauss_Newton_Base{
 
       residual.noalias() = interpPoints - (*newVolVec);
     }
-    
+   
     void minimize(
       const VolumeT *newVolume,
       const ParamT *initialParam,
