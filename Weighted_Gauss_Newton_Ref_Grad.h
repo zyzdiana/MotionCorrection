@@ -91,7 +91,8 @@ class Weighted_Gauss_Newton_Ref_Grad : Gauss_Newton_Base<_InterpolatorT>{
       }
 
       Parent::minimize(newVolume, initialParam, finalParam,
-        maxSteps, paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+        maxSteps, stepSizeScale, stepSizeLimit,
+        paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
         elapsedSteps);
 
       if(NULL != elapsedTime) { 

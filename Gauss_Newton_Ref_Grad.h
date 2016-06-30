@@ -41,9 +41,11 @@ class Gauss_Newton_Ref_Grad : Gauss_Newton_Base<_InterpolatorT>{
       const ParamT *initialParam,
       ParamT *finalParam,
       const size_t maxSteps = 20,
+      const T stepSizeScale = 0.25,
+      const T stepSizeLimit = 0,
       const T paramUpdate2NormLimit = 0,
       const T paramUpdateInfinityNormLimit = 0,
-      size_t *elapsedSteps = NULL, 
+      size_t *elapsedSteps = NULL,
       double *elapsedTime = NULL 
       ) {
 
@@ -54,8 +56,9 @@ class Gauss_Newton_Ref_Grad : Gauss_Newton_Base<_InterpolatorT>{
       }
 
       Parent::minimize(newVolume, initialParam, finalParam,
-        maxSteps, paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-        elapsedSteps);
+        maxSteps, stepSizeScale, stepSizeLimit,
+        paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+        elapsedSteps, NULL);
       
       if(NULL != elapsedTime) { 
         gettimeofday(&timeAfter, NULL);
