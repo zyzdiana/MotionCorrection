@@ -62,6 +62,9 @@ class Weighted_Gauss_Newton_New_Grad : Gauss_Newton_Base<_InterpolatorT>{
       const T stepSizeLimit = 0,
       const T paramUpdate2NormLimit = 0,
       const T paramUpdateInfinityNormLimit = 0,
+      const T paramUpdateMMLimit = 0,
+      const T paramUpdateTransScaleMM = 0,
+      const T paramUpdateRotScaleMM = 0,
       size_t *elapsedSteps = NULL, 
       double *elapsedTime = NULL,
       double *gradientAndHessianComputeTime = NULL
@@ -91,6 +94,7 @@ class Weighted_Gauss_Newton_New_Grad : Gauss_Newton_Base<_InterpolatorT>{
       Parent::minimize(newVolume, initialParam, finalParam,
         maxSteps, stepSizeScale, stepSizeLimit,
         paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+        paramUpdateMMLimit, paramUpdateTransScaleMM, paramUpdateRotScaleMM,
         elapsedSteps);
 
       if(NULL != elapsedTime) { 

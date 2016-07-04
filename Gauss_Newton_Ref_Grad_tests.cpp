@@ -58,10 +58,11 @@ TEST_CASE("a Gauss-Newton minimizer using reference-image gradients can be insta
  
       size_t maxSteps = 20;
       float stepSizeScale = 0.25;
-      float stepSizeLimit = 0;
+      float stepSizeLimit = 1.0;
 
       const dataT paramUpdate2NormLimit = 1e-6;
       const dataT paramUpdateInfinityNormLimit = 0;
+      const dataT paramUpdateMMLimit = 0;
   
       double elapsedTime;
       size_t elapsedSteps;
@@ -69,6 +70,7 @@ TEST_CASE("a Gauss-Newton minimizer using reference-image gradients can be insta
       minimizer.minimize(&volume, &initialParam, &finalParam,
         maxSteps, stepSizeScale, stepSizeLimit,
         paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+        paramUpdateMMLimit, 0, 0,
         &elapsedSteps, &elapsedTime);
  
         for(int i = 0; i < 6; i++) {
@@ -135,11 +137,12 @@ TEST_CASE("a Gauss-Newton minimizer using reference-image gradients can be insta
         // We force this to go exactly 20 steps, so that we get to the same
         // point as the Mathematica code
         size_t maxSteps = 20;
-        float stepSizeScale = 1;
-        float stepSizeLimit = 0;
+        float stepSizeScale = 0.25;
+        float stepSizeLimit = 1.0;
 
         const dataT paramUpdate2NormLimit = 0;
         const dataT paramUpdateInfinityNormLimit = 0;
+        const dataT paramUpdateMMLimit = 0;
   
         double elapsedTime;
         size_t elapsedSteps;
@@ -147,6 +150,7 @@ TEST_CASE("a Gauss-Newton minimizer using reference-image gradients can be insta
         minimizer.minimize(&newVolume, &initialParam, &finalParam,
         maxSteps, stepSizeScale, stepSizeLimit,
         paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+        paramUpdateMMLimit, 0, 0,
         &elapsedSteps, &elapsedTime);
 
         std::vector<dataT> paramSolution(6);

@@ -55,11 +55,12 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
  
       size_t maxSteps = 20;
       float stepSizeScale = 0.25;
-      float stepSizeLimit = 0;
+      float stepSizeLimit = 1.0;
 
 
       const dataT paramUpdate2NormLimit = 1e-6;
       const dataT paramUpdateInfinityNormLimit = 0;
+      const dataT paramUpdateMMLimit = 0;
   
       double elapsedTime;
       size_t elapsedSteps;
@@ -68,6 +69,7 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
         &initialParam, &finalParam,
         maxSteps, stepSizeScale, stepSizeLimit,
         paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+        paramUpdateMMLimit, 0, 0,
         &elapsedSteps, &elapsedTime, &gradientAndHessianComputeTime);
       
       WARN("elapsed time computing gradient and Hessian: "
@@ -133,11 +135,12 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
         // We force this to go exactly 20 steps, so that we get to the same
         // point as the Mathematica code
         size_t maxSteps = 20;
-        float stepSizeScale = 1;
-        float stepSizeLimit = 0;
+        float stepSizeScale = 0.25;
+        float stepSizeLimit = 1.0;
 
         const dataT paramUpdate2NormLimit = 0;
         const dataT paramUpdateInfinityNormLimit = 0;
+        const dataT paramUpdateMMLimit = 0;
   
         double elapsedTime;
         size_t elapsedSteps;
@@ -146,6 +149,7 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
           &initialParam, &finalParam,
           maxSteps, stepSizeScale, stepSizeLimit,
           paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+          paramUpdateMMLimit, 0, 0,
           &elapsedSteps, &elapsedTime, &gradientAndHessianComputeTime);
       
         WARN("elapsed time computing gradient and Hessian: "

@@ -239,7 +239,7 @@ class Gauss_Newton_Base{
       transformPointListWithParam(
         param, &pointList, &transformedPointList);
 
-      size_t pointListLength = cubeSize * cubeSize * cubeSize;
+      const size_t pointListLength = newVol->totalPoints;
 
       PointT cubeCenterPoint(cubeCenter, cubeCenter, cubeCenter);
 
@@ -267,9 +267,12 @@ class Gauss_Newton_Base{
       ParamT *finalParam,
       const size_t maxSteps = 20,
       const T stepSizeScale = 0.25,
-      const T stepSizeLimit = 0,
+      const T stepSizeLimit = 10e-6,
       const T paramUpdate2NormLimit = 0,
       const T paramUpdateInfinityNormLimit = 0,
+      const T paramUpdateMMLimit = 0,
+      const T paramUpdateTransScaleMM = 0,
+      const T paramUpdateRotScaleMM = 0,
       size_t *elapsedSteps = NULL,
       double *elapsedTime = NULL 
       ) {
@@ -283,8 +286,6 @@ class Gauss_Newton_Base{
       ParamT prevParam = curParam;
 
 
-      T stepSize = 1.0;
-
       NewVolVecT newVolVec(
         newVolume->buffer,
         this->cubeSize * this->cubeSize * this->cubeSize, 1);
@@ -295,79 +296,117 @@ class Gauss_Newton_Base{
       this->computeResidual(newVolume, &newVolVec, &curParam);
       
       T prevResidualNorm = this->residual.norm();
-      ResidualT prevResidual = residual;
         
-      std::cout << "prevResidualNorm " << prevResidualNorm << std::endl; 
+//      std::cout << "prevResidualNorm " << prevResidualNorm << std::endl; 
 
       
       for(; step < maxSteps; step++) {
-        std::cout << "-------" << std::endl; 
-        std::cout << "step " << step << std::endl; 
-        std::cout << "curParam: " << std::endl <<
-          curParam.transpose() << std::endl; 
-        std::cout << "residualNorm: " << prevResidualNorm << std::endl; 
-        std::cout << "stepSize: " << stepSize << std::endl; 
+//        std::cout << "-------" << std::endl; 
+//        std::cout << "step " << step << std::endl; 
+//        std::cout << "curParam: " << std::endl <<
+//          curParam.transpose() << std::endl; 
+//        std::cout << "residualNorm: " << prevResidualNorm << std::endl; 
+//        std::cout << "stepSize: " << stepSize << std::endl; 
 
+        //
+        // compute the direction of the next step
+        //
+        
         reducedResidual.noalias() = this->residualGradient * this->residual;
     
 //        std::cout << "reducedResidual: " << std::endl <<
 //          reducedResidual << std::endl;
 
         // This equation solves the parameter update, but with signs negated
-        ParamT negParamUpdate;
-        negParamUpdate.noalias() = this->residualHessianLDL.solve(reducedResidual);
+        ParamT negParamUpdateDirection;
+        negParamUpdateDirection.noalias() =
+          this->residualHessianLDL.solve(reducedResidual);
         
-        std::cout << "negParamUpdate: " << std::endl <<
-          negParamUpdate << std::endl;
-  
-        // Subtract the negated update (i.e., add the correct-sign update!)
-        curParam -= negParamUpdate * stepSize;
+        //
+        // perform backtracking line search in the direction of the next step 
+        //
+      
+        T stepSize = 1.0;
+
+        bool improved = false;
+
+        ParamT negParamUpdate;
+
+        while(!improved && stepSize >= stepSizeLimit) {
+          negParamUpdate = negParamUpdateDirection * stepSize;
+          
+          // Subtract the negated update (i.e., add the correct-sign update!)
+          ParamT newParam = curParam - negParamUpdate;
        
-        this->computeResidual(newVolume, &newVolVec, &curParam);
+          this->computeResidual(newVolume, &newVolVec, &newParam);
 
-        T newResidualNorm = this->residual.norm();
+          T newResidualNorm = this->residual.norm();
 
-        // If the residual has become smaller since the last step, then proceed
-        if(newResidualNorm <= prevResidualNorm) {
-          prevResidualNorm = newResidualNorm;
-          prevParam = curParam;
-          prevResidual = residual;
+          // If the residual has become smaller since the last step, take step 
+          if(newResidualNorm <= prevResidualNorm) {
+            prevResidualNorm = newResidualNorm;
+            curParam = newParam;
+            improved = true;
+          }
+          // otherwise, make the step smaller
+          else {
+            stepSize *= stepSizeScale; 
+          }
+        }
+
+        // if we can't make an improvement by stepping in this direction
+        // then we should take no step and stop the minimization
+        if(!improved) {
+          break;
+        }
+
+        //
+        // now check to see if the steps have converged
+        //
  
-          //checks for convergence
-          if(paramUpdate2NormLimit > 0) {
-            if(negParamUpdate.norm() < paramUpdate2NormLimit) {
-              step++; 
-              break; 
-            }
-          }
-  
-          if(paramUpdateInfinityNormLimit > 0) {
-            bool largerThanLimit = false;
-  
-            for (int i = 0; (! largerThanLimit) && (i < 6); ++i) {
-              largerThanLimit =  
-                (std::abs(negParamUpdate(i)) >  paramUpdateInfinityNormLimit);
-            }
-            if (! largerThanLimit) {
-              step++; 
-              break;
-            }
+        //checks for convergence
+        if(paramUpdate2NormLimit > 0) {
+          if(negParamUpdate.norm() < paramUpdate2NormLimit) {
+            step++; 
+            break; 
           }
         }
-        // If the residual has become larger since the last update, step back
-        // and reduce the step size
-        else {
-          curParam = prevParam;
-          residual = prevResidual;
-          stepSize *= stepSizeScale;
+  
+        if(paramUpdateInfinityNormLimit > 0) {
+          bool largerThanLimit = false;
+  
+          for (int i = 0; (! largerThanLimit) && (i < 6); ++i) {
+            largerThanLimit =  
+              (std::abs(negParamUpdate(i)) >  paramUpdateInfinityNormLimit);
+          }
+          if (! largerThanLimit) {
+            step++; 
+            break;
+          }
+        }
+        
+        if(paramUpdateMMLimit > 0) {
+          
+          T paramUpdateMMScore = negParamUpdate.head(3).norm() * 
+            paramUpdateTransScaleMM;
 
-          if(stepSizeLimit > 0) {
-            if(stepSizeLimit > stepSize) {
-              step++;
-              break;
-            }
+          // paramUpdateMMScore += sqrt(2.0 * (1.0 -
+          //   cos(negParamUpdate.tail(3).norm()))) * 
+          //   paramUpdateRotScaleMM;
+
+          // While the above is correct, both the cos and sqrt are
+          // expensive. We should note that 
+          // sqrt(2.0 * (1.0 - cos(x))) ~= x
+          // which allows us to approximate the above via
+
+          paramUpdateMMScore += negParamUpdate.tail(3).norm() * 
+            paramUpdateRotScaleMM;
+
+          if(paramUpdateMMScore < paramUpdateMMLimit) {
+            step++; 
+            break; 
           }
-        }
+        }  
       }
 
 

@@ -37,21 +37,7 @@ LDFLAGS += -L/space/oribi/1/users/tisdall/lib
 endif
 
 
-all: test test_read_file test_interp test_time_profiler test_rotate_coords
-
-test_read_file:
-
-test_interp:
-
-test_time_profiler:
-
-test_inverse:
-
-test_rotate_coords:
-
-test_tricubic:
-
-test_gn:
+all: test fit_nav_reps 
 
 fit_nav_reps: FFTWBuffer.o FFTOp.o
 
@@ -78,10 +64,5 @@ clean:
 	rm -f *.o
 	rm -f test
 	rm -f fit_nav_reps
-	rm -f test_read_file
-	rm -f test_interp
-	rm -f test_time_profiler
-	rm -f test_tricubic
-	rm -f test_gn
 
 PHONY: .clean

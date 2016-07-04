@@ -64,6 +64,7 @@ TEST_CASE("a weighted Gauss-Newton minimizer using new-image gradients can be in
 
     const dataT paramUpdate2NormLimit = 1e-6;
     const dataT paramUpdateInfinityNormLimit = 0;
+    const dataT paramUpdateMMLimit = 0;
 
     double elapsedTime;
     size_t elapsedSteps;
@@ -72,6 +73,7 @@ TEST_CASE("a weighted Gauss-Newton minimizer using new-image gradients can be in
       &initialParam, &finalParam,
       maxSteps, stepSizeScale, stepSizeLimit,
       paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+      paramUpdateMMLimit, 0, 0,
       &elapsedSteps, &elapsedTime, &gradientAndHessianComputeTime);
     
     WARN("elapsed time computing gradient and Hessian: "
@@ -171,14 +173,15 @@ TEST_CASE("a weighted Gauss-Newton minimizer using new-image gradients can be in
   
     ParamT finalParam;
 
-    // We force this to go exactly 20 steps, so that we get to the same
-    // point as the Mathematica code
+    // We force this to stop as soon as we take a bad step, so that we get to
+    // the same point as the Mathematica code
     size_t maxSteps = 20;
     const dataT stepSizeScale = 0.25;
-    const dataT stepSizeLimit = 1e-5;
+    const dataT stepSizeLimit = 1.0;
 
     const dataT paramUpdate2NormLimit = 0;
     const dataT paramUpdateInfinityNormLimit = 0;
+    const dataT paramUpdateMMLimit = 0;
   
     double elapsedTime;
     size_t elapsedSteps;
@@ -187,6 +190,7 @@ TEST_CASE("a weighted Gauss-Newton minimizer using new-image gradients can be in
       &initialParam, &finalParam,
       maxSteps, stepSizeScale, stepSizeLimit,
       paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+      paramUpdateMMLimit, 0, 0,
       &elapsedSteps, &elapsedTime);
 
     std::vector<dataT> paramSolution(6);

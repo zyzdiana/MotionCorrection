@@ -1,4 +1,5 @@
 #include "Weighted_Gauss_Newton_Ref_Grad.h"
+#include "Weighted_Gauss_Newton_New_Grad.h"
 
 #include "TricubicInterpolator.h"
 #include "CubicBSplineInterpolator.h"
@@ -30,13 +31,16 @@ int main(int argc, char* argv[]) {
   size_t cubeSize;
   std::string basePath;
   std::string outputPath;
-  
+  dataT translationScaleMM;
+  dataT rotationScaleMM;
+
   try {
     TCLAP::CmdLine cmd("Registering vNav volumes", ' ', "dev");
 
     TCLAP::ValueArg<std::string> inputFileArg("i", "input", "Path to a volume data, including file name, with the final \"xx.dat\" removed.", true, "", "path", cmd);
     TCLAP::ValueArg<std::string> outputFileArg("o", "output", "Path to output file that will be written.", true, "", "path", cmd);
     TCLAP::ValueArg<unsigned int> widthArg("", "width", "Number of voxels along the side of the vNav", true, 32, "integer", cmd);
+    TCLAP::ValueArg<dataT> resolutionArg("", "res", "Size of a voxel's side in mm", true, 8, "mm", cmd);
 
     cmd.parse(argc, argv);
 
@@ -44,6 +48,9 @@ int main(int argc, char* argv[]) {
     outputPath = outputFileArg.getValue();
 
     cubeSize = widthArg.getValue();
+
+    translationScaleMM = resolutionArg.getValue();
+    rotationScaleMM = 100.0;
 
   }   catch (TCLAP::ArgException &e) {
     std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
@@ -61,10 +68,14 @@ int main(int argc, char* argv[]) {
     SymmetricHalfVolumeAtAddressable< FFTWBuffer<dataT> > >
     ComplexDataCircularMaskOpT;
   typedef Weighted_Gauss_Newton_Ref_Grad<
-    TricubicInterpolatorT, DataCircularMaskOpT > TricubicMinimizerT; 
+    TricubicInterpolatorT, DataCircularMaskOpT > TricubicRefGradMinimizerT; 
   typedef Weighted_Gauss_Newton_Ref_Grad<
-    CubicBSplineInterpolatorT, DataCircularMaskOpT > CubicBSplineMinimizerT; 
-  typedef CubicBSplineMinimizerT::ParamT ParamT;
+    CubicBSplineInterpolatorT, DataCircularMaskOpT > CubicBSplineRefGradMinimizerT; 
+  typedef Weighted_Gauss_Newton_New_Grad<
+    TricubicInterpolatorT, DataCircularMaskOpT > TricubicNewGradMinimizerT; 
+  typedef Weighted_Gauss_Newton_New_Grad<
+    CubicBSplineInterpolatorT, DataCircularMaskOpT > CubicBSplineNewGradMinimizerT; 
+  typedef CubicBSplineRefGradMinimizerT::ParamT ParamT;
   
   ComplexDataCircularMaskOpT fourierMaskOp(cubeSize);
   DataVolumeT maskedRefVolume(cubeSize);
@@ -76,8 +87,7 @@ int main(int argc, char* argv[]) {
 
   size_t step = 0;
 
-//  for(int baseIndex = 0; baseIndex <= 36; baseIndex += 36) {
-  for(int baseIndex = 36; baseIndex <= 36; baseIndex += 36) {
+  for(int baseIndex = 0; baseIndex <= 36; baseIndex += 36) {
 
     {
       VolumeT refVolume(cubeSize);
@@ -137,13 +147,19 @@ int main(int argc, char* argv[]) {
 
     DataCircularMaskOpT imageMaskOp(cubeSize);
   
-    CubicBSplineMinimizerT cubicBSplineMinimizer(
+    CubicBSplineRefGradMinimizerT cubicBSplineRefGradMinimizer(
       &cubicBSplineInterpolator, &imageMaskOp,
       &dz, &dy, &dx, NULL);
     
-    TricubicMinimizerT tricubicMinimizer(
+    TricubicRefGradMinimizerT tricubicRefGradMinimizer(
       &tricubicInterpolator, &imageMaskOp,
       &dz, &dy, &dx, NULL);
+    
+    CubicBSplineNewGradMinimizerT cubicBSplineNewGradMinimizer(
+      &cubicBSplineInterpolator, cubeSize, &imageMaskOp);
+    
+    TricubicNewGradMinimizerT tricubicNewGradMinimizer(
+      &tricubicInterpolator, cubeSize, &imageMaskOp);
           
     DataVolumeT maskedNewVolume(cubeSize);
     VolumeT newVolume(cubeSize);
@@ -174,36 +190,95 @@ int main(int argc, char* argv[]) {
       const dataT stepSizeLimit = 1e-5;
   
       const dataT paramUpdate2NormLimit = 0;
-      const dataT paramUpdateInfinityNormLimit = 1e-6;
-     
-      double tricubicElapsedTime;
-      size_t tricubicElapsedSteps;
+      //const dataT paramUpdateInfinityNormLimit = 1e-6;
+      const dataT paramUpdateInfinityNormLimit = 0; 
+      const dataT paramUpdateMMLimit = 0.01;
       
-      tricubicMinimizer.minimize(&maskedNewVolume, &initialParam, &finalParam,
-        maxSteps, stepSizeScale, stepSizeLimit,
-        paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-        &tricubicElapsedSteps, &tricubicElapsedTime);
-      
-      outputFile << tricubicElapsedTime << " " << tricubicElapsedSteps
-        << " " << finalParam.transpose() << std::endl;
-      
-      double cubicBSplineElapsedTime;
-      size_t cubicBSplineElapsedSteps;
-      
-      cubicBSplineMinimizer.minimize(&maskedNewVolume, &initialParam, &finalParam,
-        maxSteps, stepSizeScale, stepSizeLimit,
-        paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-        &cubicBSplineElapsedSteps, &cubicBSplineElapsedTime); 
-      
-      outputFile << cubicBSplineElapsedTime << " " << cubicBSplineElapsedSteps
-        << " " << finalParam.transpose() << std::endl;
-     
       std::cout << "----------" << std::endl;
       std::cout << "step " << step << std::endl;
-      std::cout << "tricubic elapsed time: " << tricubicElapsedTime << " ms" << std::endl;
-      std::cout << "tricubic elapsed steps: " << tricubicElapsedSteps << std::endl;
-      std::cout << "cubic B-spline elapsed time: " << cubicBSplineElapsedTime << " ms" << std::endl;
-      std::cout << "cubic B-spline elapsed steps: " << cubicBSplineElapsedSteps << std::endl;
+    
+      { 
+        double tricubicRefGradElapsedTime;
+        size_t tricubicRefGradElapsedSteps;
+        
+        tricubicRefGradMinimizer.minimize(&maskedNewVolume, &initialParam, &finalParam,
+          maxSteps, stepSizeScale, stepSizeLimit,
+          paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+          paramUpdateMMLimit, translationScaleMM, rotationScaleMM,
+          &tricubicRefGradElapsedSteps, &tricubicRefGradElapsedTime);
+        
+        outputFile << tricubicRefGradElapsedTime << " " << tricubicRefGradElapsedSteps
+          << " " << finalParam.transpose() << std::endl;
+      
+        std::cout << "tricubic ref grad elapsed time: " << tricubicRefGradElapsedTime << " ms" << std::endl;
+        std::cout << "tricubic ref grad elapsed steps: " << tricubicRefGradElapsedSteps << std::endl;
+      }
+      
+      {
+        double cubicBSplineRefGradElapsedTime;
+        size_t cubicBSplineRefGradElapsedSteps;
+        
+        cubicBSplineRefGradMinimizer.minimize(&maskedNewVolume, &initialParam, &finalParam,
+          maxSteps, stepSizeScale, stepSizeLimit,
+          paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+          paramUpdateMMLimit, translationScaleMM, rotationScaleMM,
+          &cubicBSplineRefGradElapsedSteps, &cubicBSplineRefGradElapsedTime); 
+        
+        outputFile << cubicBSplineRefGradElapsedTime << " " << cubicBSplineRefGradElapsedSteps
+          << " " << finalParam.transpose() << std::endl;
+
+        std::cout << "cubic B-spline ref grad elapsed time: " << cubicBSplineRefGradElapsedTime << " ms" << std::endl;
+        std::cout << "cubic B-spline ref grad elapsed steps: " << cubicBSplineRefGradElapsedSteps << std::endl;
+      }
+      
+      CentralDifferencesDifferentiator<VolumeT> newVolDiffer(&maskedNewVolume);
+      VolumeT newVolDx(cubeSize, cubeVectorLength);
+      newVolDiffer.xDerivative(&newVolDx);
+  
+      VolumeT newVolDy(cubeSize, cubeVectorLength);
+      newVolDiffer.yDerivative(&newVolDy);
+  
+      VolumeT newVolDz(cubeSize, cubeVectorLength);
+      newVolDiffer.zDerivative(&newVolDz);
+      
+      { 
+        double tricubicNewGradElapsedTime;
+        size_t tricubicNewGradElapsedSteps;
+        
+        tricubicNewGradMinimizer.minimize(&maskedNewVolume,
+          &newVolDz, &newVolDy, &newVolDx, 
+          &initialParam, &finalParam,
+          maxSteps, stepSizeScale, stepSizeLimit,
+          paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+          paramUpdateMMLimit, translationScaleMM, rotationScaleMM,
+          &tricubicNewGradElapsedSteps, &tricubicNewGradElapsedTime);
+        
+        outputFile << tricubicNewGradElapsedTime << " " << tricubicNewGradElapsedSteps
+          << " " << finalParam.transpose() << std::endl;
+
+        std::cout << "tricubic new grad elapsed time: " << tricubicNewGradElapsedTime << " ms" << std::endl;
+        std::cout << "tricubic new grad elapsed steps: " << tricubicNewGradElapsedSteps << std::endl;
+      }
+      
+      {
+        double cubicBSplineNewGradElapsedTime;
+        size_t cubicBSplineNewGradElapsedSteps;
+        
+        cubicBSplineNewGradMinimizer.minimize(&maskedNewVolume,
+          &newVolDz, &newVolDy, &newVolDx, 
+          &initialParam, &finalParam,
+          maxSteps, stepSizeScale, stepSizeLimit,
+          paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
+          paramUpdateMMLimit, translationScaleMM, rotationScaleMM,
+          &cubicBSplineNewGradElapsedSteps, &cubicBSplineNewGradElapsedTime); 
+        
+        outputFile << cubicBSplineNewGradElapsedTime << " " << cubicBSplineNewGradElapsedSteps
+          << " " << finalParam.transpose() << std::endl;
+
+        std::cout << "cubic B-spline new grad elapsed time: " << cubicBSplineNewGradElapsedTime << " ms" << std::endl;
+        std::cout << "cubic B-spline new grad elapsed steps: " << cubicBSplineNewGradElapsedSteps << std::endl;
+      }
+
     }
   }
 
