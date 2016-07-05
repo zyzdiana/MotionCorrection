@@ -85,6 +85,7 @@ class Weighted_Gauss_Newton_New_Grad : Gauss_Newton_Base<_InterpolatorT>{
 
       this->generateResidualGradientAndApproxHessian(
         &(this->residualGradient), &(this->approxResidualHessian),
+        &(this->pointList),
         &weightedNewdz, &weightedNewdy, &weightedNewdx,
         this->cubeSize, this->cubeCenter,
         gradientAndHessianComputeTime);

@@ -117,6 +117,7 @@ class Gauss_Newton_Base{
       }
     }
 
+/*
     static void generateResidualGradientAndApproxHessian(
       ResidualGradientT *residualGradient,
       ResidualHessianT *approxResidualHessian,
@@ -185,6 +186,7 @@ class Gauss_Newton_Base{
           ((double) (timeAfter.tv_usec - timeBefore.tv_usec)) * 0.001;
       }
     }
+*/
 
     static void generatePointList(
       PointListT *pointList, const size_t cubeSize, const CoordT cubeCenter) {
