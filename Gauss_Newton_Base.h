@@ -262,7 +262,54 @@ class Gauss_Newton_Base{
 
       residual.noalias() = interpPoints - (*newVolVec);
     }
-   
+
+    void accumulateParam(const ParamT *deltaParam, ParamT *finalParam) {
+      typedef Eigen::AngleAxis<T> RotationT;
+
+      const Eigen::Matrix<T, 3, 1> finalRotVec = finalParam->tail(3);
+
+      const T finalAngle = finalRotVec.norm();
+
+      Eigen::Matrix<T, 3, 1> finalRotAxis;
+      if(0 == finalAngle) {
+        finalRotAxis << 1, 0, 0;
+      }
+      else {
+        finalRotAxis = finalRotVec.normalized();
+      }
+
+      RotationT finalRotation(finalAngle, finalRotAxis);
+      
+      const Eigen::Matrix<T, 3, 1> deltaRotVec = deltaParam->tail(3);
+
+      const T deltaAngle = deltaRotVec.norm();
+
+      Eigen::Matrix<T, 3, 1> deltaRotAxis;
+      if(0 == deltaAngle) {
+        deltaRotAxis << 1, 0, 0;
+      }
+      else {
+        deltaRotAxis = deltaRotVec.normalized();
+      }
+      
+      RotationT deltaRotation(deltaAngle, deltaRotAxis);
+      
+      // To update points, we want to apply final, then delta. However,
+      // we update points with the inverse of the transform we have
+      // parameterized. Thus, updating points with a single new transform is
+      // equivalent to applying:
+      // new^-1 = delta^-1 . final^-1
+      // and so
+      // new = final . delta
+
+      // combine the translations
+      finalParam->head(3) += (finalRotation * deltaParam->head(3));
+      finalRotation = finalRotation * deltaRotation;
+      finalParam->tail(3) = finalRotation.axis() * finalRotation.angle();
+    }
+  
+
+
     void minimize(
       const VolumeT *newVolume,
       const ParamT *initialParam,
@@ -287,6 +334,7 @@ class Gauss_Newton_Base{
       ParamT curParam = *initialParam;
       ParamT prevParam = curParam;
 
+      *finalParam << 0, 0, 0, 0, 0, 0;
 
       NewVolVecT newVolVec(
         newVolume->buffer,
@@ -411,8 +459,7 @@ class Gauss_Newton_Base{
         }  
       }
 
-
-      *finalParam = curParam;
+      accumulateParam(&curParam, finalParam);
 
       if(NULL != elapsedSteps) {
         *elapsedSteps = step; 

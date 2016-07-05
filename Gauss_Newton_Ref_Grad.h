@@ -26,6 +26,7 @@ class Gauss_Newton_Ref_Grad : Gauss_Newton_Base<_InterpolatorT>{
       
       this->generateResidualGradientAndApproxHessian(
         &(this->residualGradient), &(this->approxResidualHessian),
+        &(this->pointList),
         refdz, refdy, refdx, this->cubeSize, this->cubeCenter,
         gradientAndHessianComputeTime);
      
