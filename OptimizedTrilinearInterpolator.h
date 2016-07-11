@@ -22,16 +22,15 @@ class OptimizedTrilinearInterpolator :
     Matrix_8_8_T generate_X_inv(){
         Matrix_8_8_T X_inv(8,8);
         X_inv << 1,0,0,0,0,0,0,0,
-        		-1,1,0,0,0,0,0,0,
-        		-1,0,1,0,0,0,0,0,
-        		-1,0,0,1,0,0,0,0,
+            		-1,1,0,0,0,0,0,0,
+            		-1,0,1,0,0,0,0,0,
+            		-1,0,0,1,0,0,0,0,
                  1,-1,-1,0,1,0,0,0,
                  1,0,-1,-1,0,1,0,0,
                  1,-1,0,-1,0,0,1,0,
                 -1,1,1,1,-1,-1,-1,1;
         return X_inv;
     }
-
 
   protected:
     static void constructCoeffVectorSubpart(
@@ -47,22 +46,15 @@ class OptimizedTrilinearInterpolator :
         temp[0]= volume->at(z, y, x);
         temp[1]= volume->at(z, y, xPlus1);
         temp[2]= volume->at(z, yPlus1, x);
-        temp[3]= volume->at(z, yPlus1, xPlus1);
-        temp[4]= volume->at(zPlus1, y, x);
-        temp[5]= volume->at(zPlus1, y, xPlus1);
-        temp[6]= volume->at(zPlus1, yPlus1, x);
+        temp[3]= volume->at(zPlus1, y, x);
+        temp[4]= volume->at(z, yPlus1, xPlus1);
+        temp[5]= volume->at(zPlus1, yPlus1, x);
+        temp[6]= volume->at(zPlus1, y, xPlus1);
         temp[7]= volume->at(zPlus1, yPlus1, xPlus1); 
     }
 
     void computeCoefficients(
-      const VolumeT *volume,
-      const VolumeT *dx,
-      const VolumeT *dy,
-      const VolumeT *dz,
-      const VolumeT *dxy,
-      const VolumeT *dxz,
-      const VolumeT *dyz,
-      const VolumeT *dxyz) {
+      const VolumeT *volume) {
           T temp[8];
 
           Eigen::Map< Eigen::Matrix<T, 8, 1> > tempVector(temp);
@@ -80,27 +72,6 @@ class OptimizedTrilinearInterpolator :
                 //values of f(x,y,z) at each corner.
                 constructCoeffVectorSubpart(temp, volume, z, y, x);
 
-                //values of df/dx
-                constructCoeffVectorSubpart(temp+8, dx, z, y, x);
-
-                //values of df/dy
-                constructCoeffVectorSubpart(temp+16, dy, z, y, x);
-
-                //values of df/dz
-                constructCoeffVectorSubpart(temp+24, dz, z, y, x);
-
-                //values of d2f/dxdy
-                constructCoeffVectorSubpart(temp+32, dxy, z, y, x);
-
-                //values of d2f/dxdf
-                constructCoeffVectorSubpart(temp+40, dxz, z, y, x);
-
-                //values of d2f/dydf
-                constructCoeffVectorSubpart(temp+48, dyz, z, y, x);
-
-                //values of d3f/dxdydf
-                constructCoeffVectorSubpart(temp+56, dxyz, z, y, x);
-
                 // store the new coefficients in the temp matrix
                 tempMat.col(tempMatrixOffset) = tempVector;
               }
@@ -116,18 +87,11 @@ class OptimizedTrilinearInterpolator :
 
   public:
     OptimizedTrilinearInterpolator(
-      const VolumeT *volume,
-      const VolumeT *dx,
-      const VolumeT *dy,
-      const VolumeT *dz,
-      const VolumeT *dxy,
-      const VolumeT *dxz,
-      const VolumeT *dyz,
-      const VolumeT *dxyz) :
+      const VolumeT *volume) :
         Linear3DInterpolator<VolumeT, CoordT>(volume),
         X_inv(generate_X_inv())
         {
-          computeCoefficients(volume, dx, dy, dz, dxy, dxz, dyz, dxyz);
+          computeCoefficients(volume);
         }
 
 

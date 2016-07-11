@@ -49,6 +49,7 @@ TESTOBJECTS += Volume_tests.o
 TESTOBJECTS += FFTWBuffer_tests.o
 TESTOBJECTS += CentralDifferenceDifferentiator_tests.o
 TESTOBJECTS += TrilinearInterpolator_tests.o
+TESTOBJECTS += OptimizedTrilinearInterpolator_tests.o
 TESTOBJECTS += TricubicInterpolator_tests.o
 TESTOBJECTS += CubicBSplineInterpolator_tests.o
 TESTOBJECTS += FFTOp_tests.o
