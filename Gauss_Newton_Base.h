@@ -11,12 +11,19 @@
 
 #include <cfloat>
 
+#include <string>
+#include <iostream>
+#include <fcntl.h>
+#include <unistd.h>
+
 template <
-  typename _InterpolatorT 
+  typename _InterpolatorT,
+  typename _ConvergenceTestT 
   >
 class Gauss_Newton_Base{
   public:
     typedef _InterpolatorT InterpolatorT;
+    typedef _ConvergenceTestT ConvergenceTestT;
     typedef typename InterpolatorT::VolumeT VolumeT;
     typedef typename InterpolatorT::CoordT CoordT;
     typedef typename VolumeT::value_type T;
@@ -102,9 +109,12 @@ class Gauss_Newton_Base{
       residualGradient->row(5).array() -=
         pointList->row(0).array() * refDyMat.array();
 
+//      std::cout << "residualGradient->row(0).norm(): " <<
+//        residualGradient->row(0).norm() << std::endl; 
+
       // now we can compute the Hessian
       approxResidualHessian->setZero(6, 6);
-      
+     
       approxResidualHessian->template selfadjointView<Eigen::Upper>().rankUpdate(
         *(residualGradient));
       
@@ -115,78 +125,10 @@ class Gauss_Newton_Base{
           ((double) (timeAfter.tv_sec - timeBefore.tv_sec)) * 1000.0 +
           ((double) (timeAfter.tv_usec - timeBefore.tv_usec)) * 0.001;
       }
+
+//      std::cout << "approxResidualHessian: " << *approxResidualHessian << std::endl;
     }
 
-/*
-    static void generateResidualGradientAndApproxHessian(
-      ResidualGradientT *residualGradient,
-      ResidualHessianT *approxResidualHessian,
-      const VolumeT *refdz,
-      const VolumeT *refdy,
-      const VolumeT *refdx,
-      const size_t cubeSize,
-      const CoordT cubeCenter,
-      double *elapsedTime = NULL 
-      ) {
-
-     
-      struct timeval timeBefore, timeAfter;
-
-      if(NULL != elapsedTime) {
-        gettimeofday(&timeBefore, NULL);
-      }
-
-      size_t offset = 0;
-
-      Eigen::Matrix< T, 3, 6 > MMatrix;
-      Eigen::Matrix< T, 1, 3> tempDerivVector;
-      Eigen::Matrix< T, 1, 6> tempGradVector;
-
-      approxResidualHessian->setZero(6, 6);
-//      std::cout << "initial approxResidualHessian: " << *approxResidualHessian << std::endl;
-
-      for(size_t z = 0; z < cubeSize; z++) {
-        CoordT zIndex = ((CoordT) z) - cubeCenter;
-
-        for(size_t y = 0; y < cubeSize; y++) {
-          CoordT yIndex = ((CoordT) y) - cubeCenter;
-
-          for(size_t x = 0; x < cubeSize; x++, offset++) {
-            CoordT xIndex = ((CoordT) x) - cubeCenter;
-
-            // Note we define the MMatrix differently than in the
-            // Mathematica code, because we're going to use the ordering
-            // dz, dy, dx instead of dx, dy, dz
-            MMatrix <<
-              -1,  0,  0,       0, -xIndex,  yIndex,
-               0, -1,  0,  xIndex,       0, -zIndex,
-               0,  0, -1, -yIndex,  zIndex,       0;
-
-            tempDerivVector <<
-              refdz->at(offset), 
-              refdy->at(offset), 
-              refdx->at(offset);
-
-            
-            tempGradVector.noalias() = tempDerivVector * MMatrix; 
-
-            approxResidualHessian->template selfadjointView<Eigen::Upper>().rankUpdate(
-              tempGradVector.transpose());
-            
-            residualGradient->col(offset) = tempGradVector;
-          }
-        }
-      }
-      
-      if(NULL != elapsedTime) { 
-        gettimeofday(&timeAfter, NULL);
-  
-        *elapsedTime =
-          ((double) (timeAfter.tv_sec - timeBefore.tv_sec)) * 1000.0 +
-          ((double) (timeAfter.tv_usec - timeBefore.tv_usec)) * 0.001;
-      }
-    }
-*/
 
     static void generatePointList(
       PointListT *pointList, const size_t cubeSize, const CoordT cubeCenter) {
@@ -207,6 +149,7 @@ class Gauss_Newton_Base{
         }
       }
     }
+
 
     static void transformPointListWithParam(
       const ParamT *param,
@@ -232,14 +175,23 @@ class Gauss_Newton_Base{
         ( RotationT(-angle, rotAxis) * TranslationT(-param->head(3)) ) *
         (*pointList);
     }
-
+    
     virtual void computeResidual(
       const VolumeT *newVol,
       const NewVolVecT *newVolVec,
       const ParamT *param) {
 
+      computeResidual(newVol, newVolVec, &pointList, param);
+    }
+
+    virtual void computeResidual(
+      const VolumeT *newVol,
+      const NewVolVecT *newVolVec,
+      const PointListT *initialPoints,
+      const ParamT *param) {
+
       transformPointListWithParam(
-        param, &pointList, &transformedPointList);
+        param, initialPoints, &transformedPointList);
 
       const size_t pointListLength = newVol->totalPoints;
 
@@ -317,11 +269,7 @@ class Gauss_Newton_Base{
       const size_t maxSteps = 20,
       const T stepSizeScale = 0.25,
       const T stepSizeLimit = 10e-6,
-      const T paramUpdate2NormLimit = 0,
-      const T paramUpdateInfinityNormLimit = 0,
-      const T paramUpdateMMLimit = 0,
-      const T paramUpdateTransScaleMM = 0,
-      const T paramUpdateRotScaleMM = 0,
+      const ConvergenceTestT *convergenceTest = NULL, 
       size_t *elapsedSteps = NULL,
       double *elapsedTime = NULL 
       ) {
@@ -331,10 +279,21 @@ class Gauss_Newton_Base{
         gettimeofday(&timeBefore, NULL);
       }
 
-      ParamT curParam = *initialParam;
+      //
+      // establish point coordinates based on initialParam guess
+      //
+      
+      PointListT accumulatedPoints = pointList; 
+
+      transformPointListWithParam(initialParam,
+        &pointList, &accumulatedPoints);
+
+      *finalParam = *initialParam; 
+      
+      ParamT curParam;
+      curParam << 0, 0, 0, 0, 0, 0;
       ParamT prevParam = curParam;
 
-      *finalParam << 0, 0, 0, 0, 0, 0;
 
       NewVolVecT newVolVec(
         newVolume->buffer,
@@ -343,7 +302,8 @@ class Gauss_Newton_Base{
       ParamT reducedResidual;
       size_t step = 0;
       
-      this->computeResidual(newVolume, &newVolVec, &curParam);
+      this->computeResidual(newVolume, &newVolVec,
+        &accumulatedPoints, &curParam);
       
       T prevResidualNorm = this->residual.norm();
         
@@ -356,7 +316,6 @@ class Gauss_Newton_Base{
 //        std::cout << "curParam: " << std::endl <<
 //          curParam.transpose() << std::endl; 
 //        std::cout << "residualNorm: " << prevResidualNorm << std::endl; 
-//        std::cout << "stepSize: " << stepSize << std::endl; 
 
         //
         // compute the direction of the next step
@@ -388,7 +347,8 @@ class Gauss_Newton_Base{
           // Subtract the negated update (i.e., add the correct-sign update!)
           ParamT newParam = curParam - negParamUpdate;
        
-          this->computeResidual(newVolume, &newVolVec, &newParam);
+          this->computeResidual(newVolume, &newVolVec,
+            &accumulatedPoints, &newParam);
 
           T newResidualNorm = this->residual.norm();
 
@@ -413,50 +373,11 @@ class Gauss_Newton_Base{
         //
         // now check to see if the steps have converged
         //
- 
-        //checks for convergence
-        if(paramUpdate2NormLimit > 0) {
-          if(negParamUpdate.norm() < paramUpdate2NormLimit) {
+
+        if( NULL != convergenceTest && (*convergenceTest)(&negParamUpdate) ) {
             step++; 
             break; 
-          }
-        }
-  
-        if(paramUpdateInfinityNormLimit > 0) {
-          bool largerThanLimit = false;
-  
-          for (int i = 0; (! largerThanLimit) && (i < 6); ++i) {
-            largerThanLimit =  
-              (std::abs(negParamUpdate(i)) >  paramUpdateInfinityNormLimit);
-          }
-          if (! largerThanLimit) {
-            step++; 
-            break;
-          }
-        }
-        
-        if(paramUpdateMMLimit > 0) {
-          
-          T paramUpdateMMScore = negParamUpdate.head(3).norm() * 
-            paramUpdateTransScaleMM;
-
-          // paramUpdateMMScore += sqrt(2.0 * (1.0 -
-          //   cos(negParamUpdate.tail(3).norm()))) * 
-          //   paramUpdateRotScaleMM;
-
-          // While the above is correct, both the cos and sqrt are
-          // expensive. We should note that 
-          // sqrt(2.0 * (1.0 - cos(x))) ~= x
-          // which allows us to approximate the above via
-
-          paramUpdateMMScore += negParamUpdate.tail(3).norm() * 
-            paramUpdateRotScaleMM;
-
-          if(paramUpdateMMScore < paramUpdateMMLimit) {
-            step++; 
-            break; 
-          }
-        }  
+        } 
       }
 
       accumulateParam(&curParam, finalParam);

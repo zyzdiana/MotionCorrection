@@ -112,7 +112,9 @@ class CircularMaskOp<
         SymmetricHalfVolumeAtAddressable<MaskAtAddressableT>
       > Parent;
 
-    CircularMaskOp(const size_t cubeSize) :
+    CircularMaskOp(
+      const size_t cubeSize,
+      const MaskDataT maskVal = ((MaskDataT) 1.0)) :
       Parent(cubeSize),
       maskFunction(cubeSize)
     {
@@ -137,7 +139,7 @@ class CircularMaskOp<
               xIndex -= cubeSize; 
             }
 
-            this->volMask.at(offset) =
+            this->volMask.at(offset) = maskVal *
               maskFunction.maskValue(zIndex, yIndex, xIndex);
           }
         }
@@ -169,7 +171,9 @@ class CircularMaskOp<
         VolumeAtAddressable<MaskAtAddressableT>
       > Parent;
 
-    CircularMaskOp(const size_t cubeSize) :
+    CircularMaskOp(
+      const size_t cubeSize,
+      const MaskDataT maskVal = ((MaskDataT) 1.0)) :
       Parent(cubeSize),
       maskFunction(cubeSize)
     {
@@ -183,7 +187,7 @@ class CircularMaskOp<
         for(MaskDataT y = startIndex; y < endIndex; y += ((MaskDataT) 1.0)) {
           
           for(MaskDataT x = startIndex; x < endIndex; x += ((MaskDataT) 1.0), offset++) {
-            this->volMask.at(offset) =
+            this->volMask.at(offset) = maskVal * 
               maskFunction.maskValue(z, y, x);
           }
         }

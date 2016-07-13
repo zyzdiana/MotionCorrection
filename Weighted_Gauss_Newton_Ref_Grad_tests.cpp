@@ -5,6 +5,8 @@
 #include "CubicBSplineInterpolator.h"
 #include "VolumeAtAddressable.h"
 
+#include "TwoNormConvergenceTest.h"
+
 #include "CentralDifferenceDifferentiator.h"
 
 #include "FFTOp.h"
@@ -24,8 +26,9 @@ TEST_CASE("a weighted Gauss-Newton minimizer using reference-image gradients can
  
   typedef VolumeAtAddressable< FFTWBuffer<dataT> > MaskVolumeT; 
   typedef CircularMaskOp< VolumeT, MaskVolumeT> CircularMaskOpT;
+  typedef TwoNormConvergenceTest<dataT> ConvergenceTestT;
   typedef Weighted_Gauss_Newton_Ref_Grad<
-    InterpolatorT, CircularMaskOpT > MinimizerT; 
+    InterpolatorT, ConvergenceTestT, CircularMaskOpT > MinimizerT; 
   typedef MinimizerT::ParamT ParamT;
  
   VolumeT volume(cubeSize);
@@ -68,16 +71,15 @@ TEST_CASE("a weighted Gauss-Newton minimizer using reference-image gradients can
     const dataT stepSizeLimit = 1e-5;
 
     const dataT paramUpdate2NormLimit = 1e-6;
-    const dataT paramUpdateInfinityNormLimit = 0;
-    const dataT paramUpdateMMLimit = 0;
+
+    ConvergenceTestT convergenceTest(paramUpdate2NormLimit);
 
     double elapsedTime;
     size_t elapsedSteps;
 
     minimizer.minimize(&volume, &initialParam, &finalParam,
       maxSteps, stepSizeScale, stepSizeLimit,
-      paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-      paramUpdateMMLimit, 0, 0,
+      &convergenceTest, 
       &elapsedSteps, &elapsedTime);
 
     WARN("elapsed time: " << elapsedTime << " ms");
@@ -92,15 +94,14 @@ TEST_CASE("a weighted Gauss-Newton minimizer using reference-image gradients can
 
 
 TEST_CASE("a weighted Gauss-Newton minimizer using reference-image gradients can be instantiated from image data") {
-  typedef float dataT;
+  typedef double dataT;
   typedef VolumeAtAddressable< FFTWBuffer<dataT> > VolumeT; 
-  typedef CubicBSplineInterpolator<VolumeT, float> InterpolatorT; 
+  typedef CubicBSplineInterpolator<VolumeT, dataT> InterpolatorT; 
 
   const size_t cubeSize = 32;
   const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
 
-
-  typedef std::complex<float> complexT;
+  typedef std::complex<dataT> complexT;
   typedef FFTOp<dataT> DataFFTOpT;
   typedef DataFFTOpT::spatialVolumeT DataVolumeT; 
   typedef DataFFTOpT::fourierVolumeT ComplexVolumeT; 
@@ -108,15 +109,17 @@ TEST_CASE("a weighted Gauss-Newton minimizer using reference-image gradients can
   typedef CircularMaskOp< DataVolumeT, ImageMaskVolumeT> DataCircularMaskOpT;
   typedef SymmetricHalfVolumeAtAddressable< FFTWBuffer<dataT> >
     FourierMaskVolumeT; 
+  typedef TwoNormConvergenceTest<dataT> ConvergenceTestT;
   typedef CircularMaskOp< ComplexVolumeT, FourierMaskVolumeT>
     ComplexDataCircularMaskOpT;
   typedef Weighted_Gauss_Newton_Ref_Grad<
-    InterpolatorT, DataCircularMaskOpT > MinimizerT; 
-  typedef Weighted_Gauss_Newton_Ref_Grad<
-    InterpolatorT, DataCircularMaskOpT> MinimizerT; 
+    InterpolatorT, ConvergenceTestT, DataCircularMaskOpT > MinimizerT; 
   typedef MinimizerT::ParamT ParamT;
   
-  ComplexDataCircularMaskOpT fourierMaskOp(cubeSize);
+  const dataT maskScale =
+    1.0/((dataT) cubeVectorLength);
+  
+  ComplexDataCircularMaskOpT fourierMaskOp(cubeSize, maskScale);
   DataVolumeT maskedRefVolume(cubeSize);
   DataVolumeT maskedNewVolume(cubeSize);
 
@@ -132,11 +135,11 @@ TEST_CASE("a weighted Gauss-Newton minimizer using reference-image gradients can
     
     DataFFTOpT fftOp(cubeSize);
   
-    fftOp.forward(&refVolume, &fourierData);
+    fftOp.forward(&refVolume, &fourierData); 
     
-    fourierMaskOp.applyMask(&fourierData); 
+    fourierMaskOp.applyMask(&fourierData);  
         
-    fftOp.backward(&fourierData, &maskedRefVolume);
+    fftOp.backward(&fourierData, &maskedRefVolume); 
     
     REQUIRE(cubeVectorLength * sizeof(dataT)
             == BinaryFile<VolumeT>::read(&newVolume,
@@ -147,7 +150,7 @@ TEST_CASE("a weighted Gauss-Newton minimizer using reference-image gradients can
     fourierMaskOp.applyMask(&fourierData); 
         
     fftOp.backward(&fourierData, &maskedNewVolume);
-  }
+  } 
 
   InterpolatorT interpolator(&maskedRefVolume);
 
@@ -159,8 +162,8 @@ TEST_CASE("a weighted Gauss-Newton minimizer using reference-image gradients can
   volDiffer.yDerivative(&dy);
 
   VolumeT dz(cubeSize, cubeVectorLength);
-  volDiffer.zDerivative(&dz);
-  
+  volDiffer.zDerivative(&dz); 
+
   double gradientAndHessianComputeTime;
   
   DataCircularMaskOpT imageMaskOp(cubeSize);
@@ -183,18 +186,13 @@ TEST_CASE("a weighted Gauss-Newton minimizer using reference-image gradients can
     size_t maxSteps = 20;
     const dataT stepSizeScale = 0.25;
     const dataT stepSizeLimit = 1.0;
-
-    const dataT paramUpdate2NormLimit = 0;
-    const dataT paramUpdateInfinityNormLimit = 0;
-    const dataT paramUpdateMMLimit = 0;
-  
+ 
     double elapsedTime;
     size_t elapsedSteps;
   
     minimizer.minimize(&maskedNewVolume, &initialParam, &finalParam,
       maxSteps, stepSizeScale, stepSizeLimit,
-      paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-      paramUpdateMMLimit, 0, 0,
+      NULL, 
       &elapsedSteps, &elapsedTime);
 
     std::vector<dataT> paramSolution(6);

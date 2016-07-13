@@ -6,6 +6,8 @@
 #include "CubicBSplineInterpolator.h"
 #include "VolumeAtAddressable.h"
 
+#include "TwoNormConvergenceTest.h"
+
 #include "CentralDifferenceDifferentiator.h"
 
 #include "FFTWBuffer.h"
@@ -42,7 +44,8 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
     VolumeT dz(cubeSize, cubeVectorLength);
     volDiffer.zDerivative(&dz);
     
-    typedef Gauss_Newton_New_Grad<InterpolatorT> MinimizerT; 
+    typedef TwoNormConvergenceTest<dataT> ConvergenceTestT;
+    typedef Gauss_Newton_New_Grad<InterpolatorT, ConvergenceTestT> MinimizerT; 
     typedef MinimizerT::ParamT ParamT;
     
     MinimizerT minimizer(&interpolator, cubeSize);
@@ -59,8 +62,8 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
 
 
       const dataT paramUpdate2NormLimit = 1e-6;
-      const dataT paramUpdateInfinityNormLimit = 0;
-      const dataT paramUpdateMMLimit = 0;
+      
+      ConvergenceTestT convergenceTest(paramUpdate2NormLimit);
   
       double elapsedTime;
       size_t elapsedSteps;
@@ -68,8 +71,7 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
       minimizer.minimize(&volume, &dz, &dy, &dx,
         &initialParam, &finalParam,
         maxSteps, stepSizeScale, stepSizeLimit,
-        paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-        paramUpdateMMLimit, 0, 0,
+        &convergenceTest,
         &elapsedSteps, &elapsedTime, &gradientAndHessianComputeTime);
       
       WARN("elapsed time computing gradient and Hessian: "
@@ -91,6 +93,9 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
     typedef float dataT;
     typedef VolumeAtAddressable< FFTWBuffer<dataT> > VolumeT; 
     typedef CubicBSplineInterpolator<VolumeT, float> InterpolatorT; 
+    typedef TwoNormConvergenceTest<dataT> ConvergenceTestT;
+    typedef Gauss_Newton_New_Grad<InterpolatorT, ConvergenceTestT> MinimizerT; 
+    typedef MinimizerT::ParamT ParamT;
 
     const size_t cubeSize = 32;
     const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
@@ -109,8 +114,6 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
     InterpolatorT interpolator(&refVolume);
 
     
-      typedef Gauss_Newton_New_Grad<InterpolatorT> MinimizerT; 
-      typedef MinimizerT::ParamT ParamT;
 
       CentralDifferencesDifferentiator<VolumeT> volDiffer(&newVolume);
       VolumeT dx(cubeSize, cubeVectorLength);
@@ -137,19 +140,14 @@ TEST_CASE("a Gauss-Newton minimizer using new-image gradients can be instantiate
         size_t maxSteps = 20;
         float stepSizeScale = 0.25;
         float stepSizeLimit = 1.0;
-
-        const dataT paramUpdate2NormLimit = 0;
-        const dataT paramUpdateInfinityNormLimit = 0;
-        const dataT paramUpdateMMLimit = 0;
-  
+ 
         double elapsedTime;
         size_t elapsedSteps;
   
         minimizer.minimize(&newVolume, &dz, &dy, &dx,
           &initialParam, &finalParam,
           maxSteps, stepSizeScale, stepSizeLimit,
-          paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-          paramUpdateMMLimit, 0, 0,
+          NULL, 
           &elapsedSteps, &elapsedTime, &gradientAndHessianComputeTime);
       
         WARN("elapsed time computing gradient and Hessian: "

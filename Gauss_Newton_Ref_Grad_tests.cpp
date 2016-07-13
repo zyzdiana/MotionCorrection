@@ -6,6 +6,8 @@
 #include "CubicBSplineInterpolator.h"
 #include "VolumeAtAddressable.h"
 
+#include "TwoNormConvergenceTest.h"
+
 #include "CentralDifferenceDifferentiator.h"
 
 #include "FFTWBuffer.h"
@@ -40,8 +42,9 @@ TEST_CASE("a Gauss-Newton minimizer using reference-image gradients can be insta
 
     VolumeT dz(cubeSize, cubeVectorLength);
     volDiffer.zDerivative(&dz);
-    
-    typedef Gauss_Newton_Ref_Grad<InterpolatorT> MinimizerT; 
+
+    typedef TwoNormConvergenceTest<dataT> ConvergenceTestT;
+    typedef Gauss_Newton_Ref_Grad<InterpolatorT, ConvergenceTestT> MinimizerT; 
     typedef MinimizerT::ParamT ParamT;
     
     MinimizerT minimizer(&interpolator, &dz, &dy, &dx,
@@ -61,16 +64,15 @@ TEST_CASE("a Gauss-Newton minimizer using reference-image gradients can be insta
       float stepSizeLimit = 1.0;
 
       const dataT paramUpdate2NormLimit = 1e-6;
-      const dataT paramUpdateInfinityNormLimit = 0;
-      const dataT paramUpdateMMLimit = 0;
-  
+ 
+      ConvergenceTestT convergenceTest(paramUpdate2NormLimit);
+
       double elapsedTime;
       size_t elapsedSteps;
   
       minimizer.minimize(&volume, &initialParam, &finalParam,
         maxSteps, stepSizeScale, stepSizeLimit,
-        paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-        paramUpdateMMLimit, 0, 0,
+        &convergenceTest,
         &elapsedSteps, &elapsedTime);
  
         for(int i = 0; i < 6; i++) {
@@ -88,7 +90,8 @@ TEST_CASE("a Gauss-Newton minimizer using reference-image gradients can be insta
     typedef float dataT;
     typedef VolumeAtAddressable< FFTWBuffer<dataT> > VolumeT; 
     typedef CubicBSplineInterpolator<VolumeT, float> InterpolatorT; 
-    typedef Gauss_Newton_Ref_Grad<InterpolatorT> MinimizerT; 
+    typedef TwoNormConvergenceTest<dataT> ConvergenceTestT;
+    typedef Gauss_Newton_Ref_Grad<InterpolatorT, ConvergenceTestT> MinimizerT; 
     typedef MinimizerT::ParamT ParamT;
 
     const size_t cubeSize = 32;
@@ -107,8 +110,6 @@ TEST_CASE("a Gauss-Newton minimizer using reference-image gradients can be insta
 
     InterpolatorT interpolator(&refVolume);
 
-      typedef Gauss_Newton_Ref_Grad<InterpolatorT> MinimizerT; 
-      typedef MinimizerT::ParamT ParamT;
 
       CentralDifferencesDifferentiator<VolumeT> volDiffer(&refVolume);
       VolumeT dx(cubeSize, cubeVectorLength);
@@ -139,18 +140,13 @@ TEST_CASE("a Gauss-Newton minimizer using reference-image gradients can be insta
         size_t maxSteps = 20;
         float stepSizeScale = 0.25;
         float stepSizeLimit = 1.0;
-
-        const dataT paramUpdate2NormLimit = 0;
-        const dataT paramUpdateInfinityNormLimit = 0;
-        const dataT paramUpdateMMLimit = 0;
-  
+ 
         double elapsedTime;
         size_t elapsedSteps;
   
         minimizer.minimize(&newVolume, &initialParam, &finalParam,
         maxSteps, stepSizeScale, stepSizeLimit,
-        paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-        paramUpdateMMLimit, 0, 0,
+        NULL, 
         &elapsedSteps, &elapsedTime);
 
         std::vector<dataT> paramSolution(6);

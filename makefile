@@ -41,7 +41,6 @@ all: test fit_nav_reps
 
 fit_nav_reps: FFTWBuffer.o FFTOp.o
 
-#test: BinaryFile_tests.o interp3D_tests.o
 TESTOBJECTS += FFTWBuffer.o
 TESTOBJECTS += FFTOp.o
 TESTOBJECTS += BinaryFile_tests.o

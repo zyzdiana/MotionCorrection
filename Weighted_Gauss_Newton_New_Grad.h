@@ -15,12 +15,15 @@
 
 template <
   typename _InterpolatorT,
+  typename _ConvergenceTestT,
   typename _CircularMaskOpT
   >
-class Weighted_Gauss_Newton_New_Grad : Gauss_Newton_Base<_InterpolatorT>{
+class Weighted_Gauss_Newton_New_Grad : 
+  Gauss_Newton_Base<_InterpolatorT, _ConvergenceTestT> {
   public:
-    typedef Gauss_Newton_Base<_InterpolatorT> Parent;
+    typedef Gauss_Newton_Base<_InterpolatorT, _ConvergenceTestT> Parent;
     typedef typename Parent::InterpolatorT InterpolatorT;
+    typedef typename Parent::ConvergenceTestT ConvergenceTestT;
     typedef typename Parent::VolumeT VolumeT;
     typedef typename Parent::CoordT CoordT;
     typedef typename Parent::T T;
@@ -38,13 +41,15 @@ class Weighted_Gauss_Newton_New_Grad : Gauss_Newton_Base<_InterpolatorT>{
 
   protected:
     typedef typename Parent::NewVolVecT NewVolVecT;
+    typedef typename Parent::PointListT PointListT;
     
     virtual void computeResidual(
       const VolumeT *newVol,
       const NewVolVecT *newVolVec,
+      const PointListT *initialPoints,
       const ParamT *param) {
-        Parent::computeResidual(newVol, newVolVec, param);
-
+        Parent::computeResidual(newVol, newVolVec, initialPoints, param);
+        
         circularMaskOp->applyMask(&this->residual);
     }
 
@@ -60,11 +65,7 @@ class Weighted_Gauss_Newton_New_Grad : Gauss_Newton_Base<_InterpolatorT>{
       const size_t maxSteps = 20,
       const T stepSizeScale = 0.25,
       const T stepSizeLimit = 0,
-      const T paramUpdate2NormLimit = 0,
-      const T paramUpdateInfinityNormLimit = 0,
-      const T paramUpdateMMLimit = 0,
-      const T paramUpdateTransScaleMM = 0,
-      const T paramUpdateRotScaleMM = 0,
+      ConvergenceTestT *convergenceTest = NULL, 
       size_t *elapsedSteps = NULL, 
       double *elapsedTime = NULL,
       double *gradientAndHessianComputeTime = NULL
@@ -94,8 +95,7 @@ class Weighted_Gauss_Newton_New_Grad : Gauss_Newton_Base<_InterpolatorT>{
 
       Parent::minimize(newVolume, initialParam, finalParam,
         maxSteps, stepSizeScale, stepSizeLimit,
-        paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-        paramUpdateMMLimit, paramUpdateTransScaleMM, paramUpdateRotScaleMM,
+        convergenceTest, 
         elapsedSteps);
 
       if(NULL != elapsedTime) { 

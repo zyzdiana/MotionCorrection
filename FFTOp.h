@@ -50,6 +50,15 @@ class FFTFourierType<float> {
       FourierVolumeType;
 };
 
+template <>
+class FFTFourierType<double> {
+  public:
+    typedef std::complex<double> FourierType;
+    typedef
+      SymmetricHalfVolumeAtAddressable< FFTWBuffer< FourierType > >
+      FourierVolumeType;
+};
+
 
 template <typename _spatialT>
 class FFTOp {

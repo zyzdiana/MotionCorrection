@@ -4,12 +4,15 @@
 #include "Gauss_Newton_Base.h"
 
 template <
-  typename _InterpolatorT 
+  typename _InterpolatorT,
+  typename _ConvergenceTestT 
   >
-class Gauss_Newton_New_Grad : Gauss_Newton_Base<_InterpolatorT>{
+class Gauss_Newton_New_Grad : 
+  Gauss_Newton_Base<_InterpolatorT, _ConvergenceTestT>{
   public:
-    typedef Gauss_Newton_Base<_InterpolatorT> Parent;
+    typedef Gauss_Newton_Base<_InterpolatorT, _ConvergenceTestT> Parent;
     typedef typename Parent::InterpolatorT InterpolatorT;
+    typedef typename Parent::ConvergenceTestT ConvergenceTestT;
     typedef typename Parent::VolumeT VolumeT;
     typedef typename Parent::CoordT CoordT;
     typedef typename Parent::T T;
@@ -31,11 +34,7 @@ class Gauss_Newton_New_Grad : Gauss_Newton_Base<_InterpolatorT>{
       const size_t maxSteps = 20,
       const T stepSizeScale = 0.25,
       const T stepSizeLimit = 0,
-      const T paramUpdate2NormLimit = 0,
-      const T paramUpdateInfinityNormLimit = 0,
-      const T paramUpdateMMLimit = 0,
-      const T paramUpdateTransScaleMM = 0,
-      const T paramUpdateRotScaleMM = 0,
+      const ConvergenceTestT *convergenceTest = NULL, 
       size_t *elapsedSteps = NULL, 
       double *elapsedTime = NULL,
       double *gradientAndHessianComputeTime = NULL
@@ -56,8 +55,7 @@ class Gauss_Newton_New_Grad : Gauss_Newton_Base<_InterpolatorT>{
 
       Parent::minimize(newVolume, initialParam, finalParam,
         maxSteps, stepSizeScale, stepSizeLimit,
-        paramUpdate2NormLimit, paramUpdateInfinityNormLimit,
-        paramUpdateMMLimit, paramUpdateTransScaleMM, paramUpdateRotScaleMM,
+        convergenceTest, 
         elapsedSteps, NULL);
 
       if(NULL != elapsedTime) { 
