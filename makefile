@@ -1,12 +1,14 @@
-VERSION = DEBUG
-#VERSION = RELEASE
+#VERSION = DEBUG
+VERSION = RELEASE
 
-#CXXFLAGS += -I./
-CXXFLAGS += -I/Users/zyzdiana/GitHub/MotionCorrection/
-CXXFLAGS += -I/usr/local/include/
-CXXFLAGS += -L/usr/local/lib/
+CXXFLAGS += -I./
+#CXXFLAGS += -I/Users/dylan/Documents/Research/Students/Diana/MotionCorrection
+CXXFLAGS += -I/usr/local/include
+CXXFLAGS += -I/Users/zyzdiana/GitHub/MotionCorrection_Dylan/
+
+LDFLAGS += -L/usr/local/lib
 LDLIBS += -lfftw3f
-#LDLIBS += lfftw3 ##for double
+LDLIBS += -lfftw3
 
 ifeq ($(VERSION), DEBUG)                                                        
 CXXFLAGS += -g
@@ -15,6 +17,8 @@ endif
 ifeq ($(VERSION), RELEASE)                                                      
 CXXFLAGS += -g
 CXXFLAGS += -O3
+CXXFLAGS += -funroll-loops
+CXXFLAGS += -DNDEBUG
 LDFLAGS += -O3
 endif  
 
@@ -28,53 +32,40 @@ endif
 
 ifeq ($(UNAME), Linux)
 CXX = g++
+CXXFLAGS += -std=c++0x
 CXXFLAGS += -DLINUX
+CXXFLAGS += -I/space/oribi/1/users/tisdall/include
+LDFLAGS += -L/space/oribi/1/users/tisdall/lib
 endif
 
 
-all: test test_read_file test_interp test_time_profiler test_gn
+all: test fit_nav_reps 
 
-test_read_file:
+fit_nav_reps: FFTWBuffer.o FFTOp.o
 
-test_interp:
-
-test_time_profiler:
-
-test_inverse:
-
-test_rotate_coords:
-
-test_tricubic:
-
-test_gn:
-
-test_real_fftw:
-
-test_volume_fftw:
-
-test_fftw:
-
-#test: BinaryFile_tests.o interp3D_tests.o
+TESTOBJECTS += FFTWBuffer.o
+TESTOBJECTS += FFTOp.o
 TESTOBJECTS += BinaryFile_tests.o
 TESTOBJECTS += Volume_tests.o
+TESTOBJECTS += FFTWBuffer_tests.o
 TESTOBJECTS += CentralDifferenceDifferentiator_tests.o
 TESTOBJECTS += TrilinearInterpolator_tests.o
 TESTOBJECTS += TricubicInterpolator_tests.o
+TESTOBJECTS += CubicBSplineInterpolator_tests.o
+TESTOBJECTS += UpsampledTrilinearInterpolator_tests.o
+TESTOBJECTS += FFTOp_tests.o
+TESTOBJECTS += Static_Weighted_Gauss_Newton_New_Grad_tests.o
+TESTOBJECTS += Moving_Weighted_Gauss_Newton_Ref_Grad_tests.o
+TESTOBJECTS += Moving_Weighted_Gauss_Newton_New_Grad_tests.o
+TESTOBJECTS += CircularMaskOp_tests.o
+TESTOBJECTS += WeightFunction_tests.o
+TESTOBJECTS += DerivWeightFunction_tests.o
 
 test: $(TESTOBJECTS)
 
 clean:
 	rm -f *.o
 	rm -f test
-	rm -f test_read_file
-	rm -f test_interp
-	rm -f test_time_profiler
-	rm -f test_inverse
-	rm -f test_rotate_coords
-	rm -f test_tricubic
-	rm -f test_gn
-	rm -f test_real_fftw
-	rm -f test_volume_fftw
-	rm -f test_fftw
+	rm -f fit_nav_reps
 
 PHONY: .clean

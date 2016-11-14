@@ -1,16 +1,22 @@
 #include "catch.hpp"
 
 #include "TrilinearInterpolator.h"
-#include "Volume.h"
+#include "CentralDifferenceDifferentiator.h"
+
+#include "VolumeAtAddressable.h"
 
 #include "Interpolator3D_tests.h"
+
+#include "BinaryFile.h"
 
 #include <vector>
 #include <complex>
 
-TEST_CASE("a trilinear interpolator can be created from a volume") {
-    typedef std::complex<float> dataT;
-    typedef Volume<dataT, std::vector<dataT>, float > VolumeT;
+#include <sys/time.h>
+
+TEST_CASE("an optimized trilinear interpolator can be created from a volume") {
+    typedef float dataT;
+    typedef VolumeAtAddressable< std::vector<dataT> > VolumeT; 
     typedef TrilinearInterpolator<VolumeT, float> InterpolatorT;
 
     const size_t cubeSize = 10;
@@ -22,11 +28,15 @@ TEST_CASE("a trilinear interpolator can be created from a volume") {
         initialData[i] = i; 
     }
 
-    VolumeT volume(initialData, cubeSize);
+    VolumeT volume(cubeSize, initialData);
 
     InterpolatorT interpolator(&volume);
 
-    InterpolatorTests<InterpolatorT>::tests(&interpolator, &volume); 
+    struct timeval timeBefore, timeAfter;
+    
+    gettimeofday(&timeBefore, NULL);
+
+    InterpolatorTests<InterpolatorT>::identity_tests(&interpolator, &volume);
 
     SECTION("and all the points are averaged when interpolated in x") { 
         for(size_t z = 0; z < cubeSize; z++) {
@@ -69,4 +79,39 @@ TEST_CASE("a trilinear interpolator can be created from a volume") {
             }
         }
     }
+
+    gettimeofday(&timeAfter, NULL);
+  
+    double elapsedTime =
+      ((double) (timeAfter.tv_sec - timeBefore.tv_sec)) * 1000.0 +
+      ((double) (timeAfter.tv_usec - timeBefore.tv_usec)) * 0.001;
+
+    WARN("elapsed time: " << elapsedTime << " ms");
+}
+
+
+TEST_CASE(
+  "an optimized trilinear interpolator can be created from a constant-valued volume") {
+    typedef float dataT;
+    typedef VolumeAtAddressable< std::vector<dataT> > VolumeT; 
+    typedef TrilinearInterpolator<VolumeT, float> InterpolatorT;
+
+    const size_t cubeSize = 10;
+    const size_t cubeVectorLength = cubeSize * cubeSize * cubeSize;
+
+    std::vector<dataT> initialData(cubeVectorLength);
+
+    const dataT constValue = 1.0;
+
+    for(size_t i = 0; i < cubeVectorLength; i++) {
+        initialData[i] = constValue; 
+    }
+
+    VolumeT volume(cubeSize, initialData);
+
+    InterpolatorT interpolator(&volume);
+
+    InterpolatorTests<InterpolatorT>::identity_tests(&interpolator, &volume); 
+    InterpolatorTests<InterpolatorT>::constant_tests(
+      &interpolator, &volume, constValue); 
 }

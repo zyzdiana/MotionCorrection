@@ -3,21 +3,18 @@
 
 template < 
     typename _VolumeT,
-    typename coordT>
+    typename _CoordT>
 class Interpolator3D {
   public:
     typedef _VolumeT VolumeT;
-    typedef typename VolumeT::T T;
+    typedef typename _VolumeT::value_type T;
+    typedef _CoordT CoordT;
 
     const int cubeSize;
+
     Interpolator3D(const VolumeT *volume) :
         volume(volume), 
         cubeSize(volume->cubeSize){}
-
-    virtual T interp(
-        const coordT z,
-        const coordT y,
-        const coordT x) const = 0;
 
   protected:
     const VolumeT *volume;

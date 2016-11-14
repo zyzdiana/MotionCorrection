@@ -1,0 +1,415 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 10.3' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     13764,        407]
+NotebookOptionsPosition[     12234,        354]
+NotebookOutlinePosition[     12587,        370]
+CellTagsIndexPosition[     12544,        367]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"inputVol", "=", 
+   RowBox[{"Abs", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"Partition", "[", 
+       RowBox[{
+        RowBox[{"BinaryReadList", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"NotebookDirectory", "[", "]"}], "<>", 
+           "\"\<../test_data/8mm_iso_x_rot_0_5_to_2_5_deg_z_trans_rep_0_slice_\
+\>\"", "<>", 
+           RowBox[{"ToString", "[", "#", "]"}], "<>", "\"\<.dat\>\""}], ",", 
+          "\"\<Complex64\>\""}], "]"}], ",", "32"}], "]"}], "&"}], "/@", 
+     RowBox[{"Range", "[", 
+      RowBox[{"0", ",", "31", ",", "1"}], "]"}]}], "]"}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.6692951279295073`*^9, 3.669295132567425*^9}, {
+  3.670241126631517*^9, 3.670241128351779*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"BinaryWrite", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"NotebookDirectory", "[", "]"}], "<>", "\"\<volInput.dat\>\""}], 
+    ",", "inputVol", ",", "\"\<Real64\>\""}], "]"}], ";"}]], "Input",
+ CellChangeTimes->{{3.669296257084494*^9, 3.669296275875407*^9}, {
+  3.670241138368771*^9, 3.670241142812437*^9}, {3.681320746234641*^9, 
+  3.6813207465071383`*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"fourier", "=", 
+   RowBox[{"Fourier", "[", 
+    RowBox[{"inputVol", ",", 
+     RowBox[{"FourierParameters", "\[Rule]", 
+      RowBox[{"{", 
+       RowBox[{"1", ",", " ", 
+        RowBox[{"-", "1"}]}], "}"}]}]}], "]"}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.6687681253130913`*^9, 3.668768133721395*^9}, {
+   3.668768297556302*^9, 3.668768307052668*^9}, 3.670241165779789*^9}],
+
+Cell[BoxData["\[IndentingNewLine]"], "Input",
+ CellChangeTimes->{3.670241495985183*^9}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"fourierPoints", "=", 
+   RowBox[{
+    RowBox[{"Function", "[", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"zDim", ",", "yDim", ",", "xDim"}], "}"}], ",", 
+      RowBox[{"RotateLeft", "[", 
+       RowBox[{
+        RowBox[{"Table", "[", 
+         RowBox[{
+          RowBox[{"{", 
+           RowBox[{"i", ",", "j", ",", "k"}], "}"}], ",", 
+          RowBox[{"{", 
+           RowBox[{"i", ",", 
+            RowBox[{"-", "zDim"}], ",", 
+            RowBox[{"zDim", "-", "1"}]}], "}"}], ",", 
+          RowBox[{"{", 
+           RowBox[{"j", ",", 
+            RowBox[{"-", "yDim"}], ",", 
+            RowBox[{"yDim", "-", "1"}]}], "}"}], ",", 
+          RowBox[{"{", 
+           RowBox[{"k", ",", 
+            RowBox[{"-", "xDim"}], ",", 
+            RowBox[{"xDim", "-", "1"}]}], "}"}]}], "]"}], ",", 
+        RowBox[{"{", 
+         RowBox[{"zDim", ",", "yDim", ",", "xDim"}], "}"}]}], "]"}]}], "]"}], 
+    "@@", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"Dimensions", "[", "fourier", "]"}], "/", "2"}], ")"}]}]}], 
+  ";"}]], "Input",
+ CellChangeTimes->{{3.6702412318761377`*^9, 3.670241232402611*^9}, {
+  3.670243886946454*^9, 3.670243981076768*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Dimensions", "[", "fourierPoints", "]"}]], "Input"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"32", ",", "32", ",", "32", ",", "3"}], "}"}]], "Output",
+ CellChangeTimes->{
+  3.6702412448048487`*^9, 3.670243679793988*^9, {3.6702438976970253`*^9, 
+   3.6702439334700737`*^9}, {3.670243965805925*^9, 3.670243983786235*^9}, 
+   3.67024504057419*^9, 3.670630100279193*^9, 3.670630337825366*^9, 
+   3.670633261571327*^9, 3.681320636049478*^9, 3.681320757832275*^9, 
+   3.6813207958974667`*^9, 3.6813993408717318`*^9}]
+}, Open  ]],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"windowFunction", "[", "x_", "]"}], ":=", 
+  RowBox[{"If", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"x", "/", "16"}], "<", 
+     RowBox[{"3", "/", "4"}]}], ",", "1", ",", 
+    RowBox[{"HannWindow", "[", 
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"x", "/", "16"}], "-", 
+        RowBox[{"3", "/", "4"}]}], ")"}], "2"}], "]"}]}], "]"}]}]], "Input",
+ CellChangeTimes->{3.670257773381447*^9, 3.681116532162162*^9, 
+  3.681344070017363*^9}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"fourierWindowWeights", "=", 
+   RowBox[{"Map", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"windowFunction", "[", 
+       RowBox[{"Norm", "[", "#", "]"}], "]"}], "&"}], ",", 
+     RowBox[{"N", "[", "fourierPoints", "]"}], ",", 
+     RowBox[{"{", "3", "}"}]}], "]"}]}], ";"}]], "Input",
+ CellChangeTimes->{3.670245388872917*^9}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Dimensions", "[", "fourierWindowWeights", "]"}]], "Input",
+ CellChangeTimes->{{3.670241301344647*^9, 3.670241305217493*^9}}],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"32", ",", "32", ",", "32"}], "}"}]], "Output",
+ CellChangeTimes->{3.670241305474375*^9, 3.670243680383129*^9, 
+  3.670243951454892*^9, 3.6702439842033033`*^9, 3.6706301020476933`*^9, 
+  3.670630338493305*^9, 3.67063326198529*^9, 3.681320639224432*^9, 
+  3.6813207582926292`*^9, 3.681320796362115*^9, 3.681399342502097*^9}]
+}, Open  ]],
+
+Cell[BoxData["\[IndentingNewLine]"], "Input",
+ CellChangeTimes->{3.670241499568241*^9}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"fourierFiltered", "=", 
+   RowBox[{"fourier", "*", "fourierWindowWeights"}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.670241503059374*^9, 3.6702415056183147`*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"fourier", "[", 
+  RowBox[{"[", 
+   RowBox[{"1", ",", "2", ",", "1"}], "]"}], "]"}]], "Input",
+ CellChangeTimes->{{3.6706326004678497`*^9, 3.670632603982555*^9}, {
+  3.670632820601034*^9, 3.6706328526162233`*^9}, {3.670633024842211*^9, 
+  3.6706330299201517`*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"-", "69.85339720749243`"}], "-", 
+  RowBox[{"40.814761631759254`", " ", "\[ImaginaryI]"}]}]], "Output",
+ CellChangeTimes->{
+  3.670632604342309*^9, {3.670632821109552*^9, 3.6706328531040916`*^9}, 
+   3.670633030292309*^9, 3.670633262046876*^9, 3.681320642250194*^9, 
+   3.6813207583498297`*^9, 3.6813207964445343`*^9, 3.681399344252185*^9}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"fourierFiltered", "[", 
+  RowBox[{"[", 
+   RowBox[{"1", ",", "1", ",", "18"}], "]"}], "]"}]], "Input",
+ CellChangeTimes->{{3.670630611140806*^9, 3.670630656435878*^9}, {
+  3.670632574184421*^9, 3.67063259413431*^9}}],
+
+Cell[BoxData[
+ RowBox[{"0.4167492197354082`", "\[VeryThinSpace]", "-", 
+  RowBox[{"0.05141509772245021`", " ", "\[ImaginaryI]"}]}]], "Output",
+ CellChangeTimes->{{3.6706306222114277`*^9, 3.670630656973494*^9}, {
+   3.67063257843169*^9, 3.670632594471705*^9}, 3.670633262086026*^9, 
+   3.681320644114955*^9, 3.681320758394457*^9, 3.681320796493701*^9, 
+   3.681399344918283*^9}]
+}, Open  ]],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"BinaryWrite", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"NotebookDirectory", "[", "]"}], "<>", 
+     "\"\<CircularMaskOpFourierDomainOutput.dat\>\""}], ",", 
+    RowBox[{"Flatten", "[", 
+     RowBox[{"fourierFiltered", "[", 
+      RowBox[{"[", 
+       RowBox[{"All", ",", "All", ",", 
+        RowBox[{"1", ";;", "17"}]}], "]"}], "]"}], "]"}], ",", 
+    "\"\<Complex128\>\""}], "]"}], ";"}]], "Input",
+ CellChangeTimes->{{3.668768357596504*^9, 3.668768368533945*^9}, {
+  3.670241651809333*^9, 3.6702416615035057`*^9}, {3.670245053731337*^9, 
+  3.67024505881295*^9}, {3.670630111260445*^9, 3.670630118110244*^9}, {
+  3.6706303193127203`*^9, 3.6706303211114902`*^9}, {3.670633238883525*^9, 
+  3.670633249500308*^9}, {3.681320783805963*^9, 3.681320785475912*^9}}],
+
+Cell[BoxData["\[IndentingNewLine]"], "Input",
+ CellChangeTimes->{3.6706301192835493`*^9}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"fourierOutputVol", "=", 
+   RowBox[{"Chop", "[", 
+    RowBox[{"InverseFourier", "[", 
+     RowBox[{"fourierFiltered", ",", 
+      RowBox[{"FourierParameters", "\[Rule]", 
+       RowBox[{"{", 
+        RowBox[{
+         RowBox[{"-", "1"}], ",", " ", 
+         RowBox[{"-", "1"}]}], "}"}]}]}], "]"}], "]"}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.670241512551072*^9, 3.6702415374439373`*^9}, {
+   3.670241643097014*^9, 3.670241645015255*^9}, 3.6702436680078373`*^9, {
+   3.670245046745742*^9, 3.670245048811335*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"BinaryWrite", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"NotebookDirectory", "[", "]"}], "<>", 
+     "\"\<CircularMaskOpFourierOutput.dat\>\""}], ",", 
+    RowBox[{"Re", "[", "fourierOutputVol", "]"}], ",", "\"\<Real64\>\""}], 
+   "]"}], ";"}]], "Input",
+ CellChangeTimes->{{3.668768357596504*^9, 3.668768368533945*^9}, {
+  3.670241651809333*^9, 3.6702416615035057`*^9}, {3.670245053731337*^9, 
+  3.67024505881295*^9}, {3.6813207483477583`*^9, 3.6813207485548697`*^9}}],
+
+Cell[BoxData[
+ RowBox[{"\[IndentingNewLine]", "\[IndentingNewLine]"}]], "Input",
+ CellChangeTimes->{{3.6702453435173388`*^9, 3.670245343645363*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"imagePoints", "=", 
+   RowBox[{"points", "=", 
+    RowBox[{
+     RowBox[{"Function", "[", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"zDim", ",", "yDim", ",", "xDim"}], "}"}], ",", 
+       RowBox[{"Table", "[", 
+        RowBox[{
+         RowBox[{"{", 
+          RowBox[{
+           RowBox[{"i", "-", 
+            RowBox[{"(", 
+             RowBox[{
+              RowBox[{"zDim", "/", "2"}], "-", "0.5"}], ")"}]}], ",", 
+           RowBox[{"j", "-", 
+            RowBox[{"(", 
+             RowBox[{
+              RowBox[{"yDim", "/", "2"}], "-", "0.5"}], ")"}]}], ",", 
+           RowBox[{"k", "-", 
+            RowBox[{"(", 
+             RowBox[{
+              RowBox[{"xDim", "/", "2"}], "-", "0.5"}], ")"}]}]}], "}"}], ",", 
+         RowBox[{"{", 
+          RowBox[{"i", ",", "0", ",", 
+           RowBox[{"zDim", "-", "1"}]}], "}"}], ",", 
+         RowBox[{"{", 
+          RowBox[{"j", ",", "0", ",", 
+           RowBox[{"yDim", "-", "1"}]}], "}"}], ",", 
+         RowBox[{"{", 
+          RowBox[{"k", ",", "0", ",", 
+           RowBox[{"xDim", "-", "1"}]}], "}"}]}], "]"}]}], "]"}], "@@", 
+     RowBox[{"{", 
+      RowBox[{"32", ",", "32", ",", "32"}], "}"}]}]}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.670245344626698*^9, 3.670245352629589*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Dimensions", "[", "imagePoints", "]"}]], "Input",
+ CellChangeTimes->{{3.670245356468041*^9, 3.670245360781836*^9}}],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"32", ",", "32", ",", "32", ",", "3"}], "}"}]], "Output",
+ CellChangeTimes->{3.670245361059957*^9, 3.6813206573262997`*^9, 
+  3.6813207586357193`*^9, 3.6813207967753267`*^9, 3.681399352182073*^9}]
+}, Open  ]],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"imageWindowWeights", "=", 
+   RowBox[{"Map", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"windowFunction", "[", 
+       RowBox[{"Norm", "[", "#", "]"}], "]"}], "&"}], ",", 
+     RowBox[{"N", "[", "imagePoints", "]"}], ",", 
+     RowBox[{"{", "3", "}"}]}], "]"}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.670245388872917*^9, 3.670245400048255*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"imageFiltered", "=", 
+   RowBox[{"inputVol", "*", "imageWindowWeights"}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.670241503059374*^9, 3.6702415056183147`*^9}, {
+  3.67024542114423*^9, 3.670245432377768*^9}}],
+
+Cell[BoxData["\[IndentingNewLine]"], "Input",
+ CellChangeTimes->{3.670245464006887*^9}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"BinaryWrite", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"NotebookDirectory", "[", "]"}], "<>", 
+     "\"\<CircularMaskOpImageOutput.dat\>\""}], ",", 
+    RowBox[{"Re", "[", "imageFiltered", "]"}], ",", "\"\<Real64\>\""}], "]"}],
+   ";"}]], "Input",
+ CellChangeTimes->{{3.668768357596504*^9, 3.668768368533945*^9}, {
+  3.670241651809333*^9, 3.6702416615035057`*^9}, {3.670245053731337*^9, 
+  3.67024505881295*^9}, {3.6702454681853743`*^9, 3.670245474010502*^9}, {
+  3.681320742307185*^9, 3.681320742383541*^9}}],
+
+Cell[BoxData["\[IndentingNewLine]"], "Input",
+ CellChangeTimes->{3.670242372313478*^9}]
+},
+WindowSize->{1276, 755},
+WindowMargins->{{0, Automatic}, {Automatic, 0}},
+FrontEndVersion->"11.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (July 28, \
+2016)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 755, 19, 96, "Input"],
+Cell[1316, 41, 394, 9, 32, "Input"],
+Cell[1713, 52, 412, 10, 32, "Input"],
+Cell[2128, 64, 87, 1, 54, "Input"],
+Cell[2218, 67, 1192, 34, 75, "Input"],
+Cell[CellGroupData[{
+Cell[3435, 105, 75, 1, 32, "Input"],
+Cell[3513, 108, 456, 8, 32, "Output"]
+}, Open  ]],
+Cell[3984, 119, 496, 15, 32, "Input"],
+Cell[4483, 136, 365, 10, 32, "Input"],
+Cell[CellGroupData[{
+Cell[4873, 150, 148, 2, 32, "Input"],
+Cell[5024, 154, 362, 6, 32, "Output"]
+}, Open  ]],
+Cell[5401, 163, 87, 1, 54, "Input"],
+Cell[5491, 166, 198, 4, 32, "Input"],
+Cell[CellGroupData[{
+Cell[5714, 174, 287, 6, 32, "Input"],
+Cell[6004, 182, 375, 7, 32, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[6416, 194, 240, 5, 32, "Input"],
+Cell[6659, 201, 377, 6, 32, "Output"]
+}, Open  ]],
+Cell[7051, 210, 796, 17, 32, "Input"],
+Cell[7850, 229, 89, 1, 54, "Input"],
+Cell[7942, 232, 550, 13, 32, "Input"],
+Cell[8495, 247, 506, 11, 32, "Input"],
+Cell[9004, 260, 148, 2, 75, "Input"],
+Cell[9155, 264, 1297, 36, 96, "Input"],
+Cell[CellGroupData[{
+Cell[10477, 304, 139, 2, 32, "Input"],
+Cell[10619, 308, 235, 4, 32, "Output"]
+}, Open  ]],
+Cell[10869, 315, 385, 10, 32, "Input"],
+Cell[11257, 327, 243, 5, 32, "Input"],
+Cell[11503, 334, 87, 1, 54, "Input"],
+Cell[11593, 337, 547, 12, 32, "Input"],
+Cell[12143, 351, 87, 1, 54, "Input"]
+}
+]
+*)
+

@@ -1,238 +1,329 @@
 #ifndef Gauss_Newton_h
 #define Gauss_Newton_h
 
-#include "Interpolation_3D.h"
-#include "TricubicInterpolator.h"
-#include "CentralDifferenceDifferentiator.h"
-#include <stdio.h>
-#include <math.h>
 #include <iostream>
-#include <fstream>
-#include <iterator>
-#include <complex>
-#include <vector>
-#include <string>
 
-using namespace std;
-using namespace Eigen;
+#include <sys/time.h>
+
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+
+
+#include <cfloat>
+
+#include <string>
+#include <iostream>
+#include <fcntl.h>
+#include <unistd.h>
+
+#include "TestHelper.h"
 
 template <
-    typename VolumeT,
-    typename CoordT>
-class Gauss_Newton{
+  typename _ResidualOpT,
+  typename _ResidualGradientAndHessianT,
+  typename _InterpolatorT,
+  typename _ParamAccumulatorT,
+  typename _ConvergenceTestT = void
+  >
+class Gauss_Newton {
   public:
-    typedef typename VolumeT::T T;
+    typedef _ResidualOpT ResidualOpT;
+    typedef _ResidualGradientAndHessianT ResidualGradientAndHessianT;
+    typedef _InterpolatorT InterpolatorT;
+    typedef _ConvergenceTestT ConvergenceTestT;
+    typedef _ParamAccumulatorT ParamAccumulatorT;
+    typedef typename InterpolatorT::VolumeT VolumeT;
+    typedef typename InterpolatorT::CoordT CoordT;
+    typedef typename VolumeT::value_type T;
+    typedef typename Eigen::Matrix<T, 6, 1> ParamT;
 
-    // define some alias
-    typedef Matrix< T, 6, Dynamic >  Matrix_gradP;
-    typedef Matrix< T, Dynamic, 1 >  Vector_flatR;
-    typedef Matrix< T, 3, Dynamic >  Matrix3X;
-    typedef Matrix< T, 4, Dynamic >  Matrix4X;
-    typedef Matrix< T, 6, 6 >  Matrix66T;
-    typedef Matrix< T, 6, 3 >  Matrix_M;
-    typedef Matrix< T, 3, 3 > Matrix3T;
-    typedef Matrix< T, 3, 1 > coordT;
-    typedef Matrix< T, 4, 1 > PointT;
-    typedef Matrix< T, 64, 1 > Vector64T;
-    typedef Matrix< T, 6, 1 > Vector6T;
+    Gauss_Newton(
+      const InterpolatorT *interpRef,
+      ResidualOpT *residualOp,
+      ResidualGradientAndHessianT *residualGradientAndHessian,
+      const size_t cubeSize 
+      ) :
+      interpRef(interpRef),
+      residualOp(residualOp),
+      residualGradientAndHessian(residualGradientAndHessian),
+      cubeSize(cubeSize),
+      cubeCenter(cubeCenterFromCubeSize(cubeSize)),
+      residualGradient(6, cubeSize * cubeSize * cubeSize),
+      pointList(3, cubeSize * cubeSize * cubeSize),
+      transformedPointList(3, cubeSize * cubeSize * cubeSize),
+      residual(cubeSize * cubeSize * cubeSize, 1) {
+      
+      generatePointList(&pointList, cubeSize, cubeCenter);
+    }
+    
 
-    typedef Translation< T, 3> Translation3T;
-    typedef AngleAxis< T > AngleAxisT;
-
-    const int cubeSize;
-    const coordT cubeCenter;
-    std::vector<T> weights;
-    Matrix4X grid_points;
-
-    static CoordT cubeCenterFromCubeSize(const float cubeSize) {
+  protected:
+    typedef typename ResidualOpT::ResidualT ResidualT;
+    typedef typename ResidualOpT::NewVolVecT NewVolVecT;
+    typedef typename ResidualOpT::PointListT PointListT;
+    typedef typename ResidualGradientAndHessianT::ResidualGradientT ResidualGradientT;
+    typedef typename ResidualGradientAndHessianT::ResidualHessianT ResidualHessianT;
+    typedef typename ResidualGradientAndHessianT::ResidualHessianLDLT ResidualHessianLDLT;
+    typedef Eigen::Matrix< T, 3, 1 > PointT;
+    
+    static CoordT cubeCenterFromCubeSize(const size_t cubeSize) {
         return ((CoordT) cubeSize)/(CoordT)2.0 - (CoordT)0.5;
     }
-    Gauss_Newton(
-        const VolumeT *volume, 
-        const TricubicInterpolator<VolumeT, CoordT>  *interpolator, 
-        const CentralDifferencesDifferentiator<VolumeT> *differentiator) :
-        volume(volume),
-        interpolator(interpolator),
-        cubeSize(volume->cubeSize),
-        cubeCenter(volume->template cubeCenterAsTriple<coordT>()){
-            // initialization
-            gradP.resize(6, cubeSize*cubeSize*cubeSize);
-            grid_points.resize(4, cubeSize*cubeSize*cubeSize);
-            weights.resize(cubeSize*cubeSize*cubeSize);
+    
 
-            // get axis derivatives from the interpolator
-            Matrix_M M;
-            coordT axis_derivatives;
 
-            VolumeT dz(cubeSize);
-            VolumeT dy(cubeSize);
-            VolumeT dx(cubeSize);
-            differentiator->zDerivative(&dz);
-            differentiator->yDerivative(&dy);
-            differentiator->xDerivative(&dx);
-            // compute radius for masking
-            T radius = cubeSize/2;
+    static void generatePointList(
+      PointListT *pointList, const size_t cubeSize, const CoordT cubeCenter) {
 
-            int idx = 0;
-            for(int z = 0; z < cubeSize; ++z){
-                for(int y = 0; y < cubeSize; ++y){
-                    for(int x = 0; x < cubeSize; ++x){
-                        grid_points.col(idx) = PointT(z-cubeCenter(2),y-cubeCenter(1),x-cubeCenter(0),1);
-                        // compute mask
-                        T n = (coordT(z,y,x)-cubeCenter).norm();
-                        weights[idx] = window(n, radius);
-                        //weights[idx] = 1;
-                        // compute the gradient using axis derivatives from the interpolator
-                        M = get_M(coordT(z,y,x)-cubeCenter);
+      size_t offset = 0;
 
-                        axis_derivatives << dx.at(idx) , dy.at(idx) , dz.at(idx);
-                        gradP.col(idx) = M * axis_derivatives * weights[idx];
-                        idx++;
-                    }
-                }
-            }
+      for(size_t z = 0; z < cubeSize; z++) {
+        CoordT zCoord = ((CoordT) z) - cubeCenter; 
+        
+        for(size_t y = 0; y < cubeSize; y++) {
+          CoordT yCoord = ((CoordT) y) - cubeCenter; 
+          
+          for(size_t x = 0; x < cubeSize; x++, offset++) {
+            CoordT xCoord = ((CoordT) x) - cubeCenter;
 
+            pointList->col(offset) = PointT(zCoord, yCoord, xCoord);
+          }
         }
-
-    static T window(T n, T radius, T d = 0.4){
-        T tmp = n/radius - 0.75;
-        if (tmp < 0){
-            return 1.0;
-        }
-        else{
-            if((tmp/d > -0.5) and (tmp/d < 0.5)){
-                return cos(M_PI*(tmp/d));
-            }
-            else{
-                return 0.0;
-            }
-        }
+      }
     }
 
 
+    static void transformPointListWithParam(
+      const ParamT *param,
+      const PointListT *pointList,
+      PointListT *transformedPointList) {
 
-    Matrix4X rotate_coords_transformation(const Vector6T params){
-        //compute vector norm
-        T theta = params.tail(3).norm();
+      typedef Eigen::AngleAxis<T> RotationT;
+      typedef Eigen::Translation<T, 3> TranslationT;
 
-        // apply translation
-        //coordT trans_vec(-params(1),-params(0),-params(2));
-        Transform<T,3,Affine> translation(Translation3T(-params.head(3)));
-        //Transform<T,3,Affine> translation( ( Translation3T(trans_vec) ) );
-        Matrix4X transformed_coords = translation.matrix() * grid_points;
+      const Eigen::Matrix<T, 3, 1> rotVec = param->tail(3);
 
-        //if rotation is zero
-        if (theta == 0){
-            Transform<T,3,Affine> t_back( ( Translation3T(cubeCenter) ) );
-            transformed_coords = t_back.matrix() * transformed_coords;
-            return transformed_coords;
-        }
-        Transform<T,3,Affine> rotation = Translation3T(cubeCenter)  * AngleAxisT(theta, params.tail(3)/theta).inverse();
-        transformed_coords =  rotation * transformed_coords;
+      const T angle = rotVec.norm();
 
-        for (int idx = 0; idx < cubeSize*cubeSize*cubeSize; ++idx){
-            for (int i = 0; i < 3; ++i){
-                transformed_coords(i,idx) = fmod(transformed_coords(i,idx) + cubeSize, cubeSize);
-            }
-        }
-        return transformed_coords;
+      Eigen::Matrix<T, 3, 1> rotAxis;
+      if(0 == angle) {
+        rotAxis << 1, 0, 0;
+      }
+      else {
+        rotAxis = rotVec.normalized();
+      }
+      
+      transformedPointList->noalias() =
+        ( RotationT(-angle, rotAxis) * TranslationT(-param->head(3)) ) *
+        (*pointList);
+    }
+   
+    void computeResidual(
+      const VolumeT *newVolume,
+      const ParamT *curParam) {
+
+      transformPointListWithParam(
+        curParam, &pointList, &transformedPointList);
+      
+      NewVolVecT newVolVec(
+        newVolume->buffer,
+        this->cubeSize * this->cubeSize * this->cubeSize, 1);
+      
+      (*residualOp)(newVolume, &newVolVec, &transformedPointList,
+        curParam, &residual);
     }
 
-    Matrix_M get_M(coordT pt){
-            Matrix_M M;
-            M(0, 0) = 0;
-            M(1, 0) = 0;
-            M(2, 0) = -1;
-            M(3, 0) = -pt(1);
-            M(4, 0) = pt(0);
-            M(5, 0) = 0;
+    void minimize(
+      const VolumeT *newVolume,
+      const VolumeT *refdz,
+      const VolumeT *refdy,
+      const VolumeT *refdx,
+      const ParamT *initialParam,
+      ParamT *finalParam,
+      const size_t maxSteps = 20,
+      const T stepSizeScale = 0.25,
+      const ConvergenceTestT *convergenceTest = NULL, 
+      size_t *elapsedSteps = NULL,
+      size_t *elapsedSearchSteps = NULL,
+      double *elapsedTime = NULL 
+      ) {
+      struct timeval timeBefore, timeAfter;
 
-            M(0, 1) = 0;
-            M(1, 1) = -1;
-            M(2, 1) = 0;
-            M(3, 1) = pt(2);
-            M(4, 1) = 0;
-            M(5, 1) = -pt(0);
+      if(NULL != elapsedTime) {
+        gettimeofday(&timeBefore, NULL);
+      }
 
-            M(0, 2) = -1;
-            M(1, 2) = 0;
-            M(2, 2) = 0;
-            M(3, 2) = 0;
-            M(4, 2) = -pt(2);
-            M(5, 2) = pt(1);
-            return M;
-    }
+      //
+      // establish point coordinates based on initialParam guess
+      //
+      
 
-
-    Vector6T gauss_newton(VolumeT *vol_target, int max_iter){
-
-        Vector6T P_old;
-        P_old.fill(0);
-        Vector6T P_cur;
-        P_cur.fill(0);
-        Vector6T P_new;
-        P_new.fill(0);
-
-        std::vector<T> errors;
-        errors.push_back(10);
-
-        // local variables for the loop
-        Vector_flatR flatR(cubeSize*cubeSize*cubeSize);
-        Vector6T deltaP;
-        Matrix66T iJrTJr;
+      ParamT curParam = *initialParam;
+      ParamT prevParam = curParam;
 
 
-        int counter = 0;
-        Matrix4X dest_coords;
-        T error = 0;
-        while(counter < max_iter){
-            //cout << "Counter: " << counter << endl;
+      ParamT reducedResidual;
+      size_t step = 0;
+      size_t searchStep = 0;
+    
+      computeResidual(newVolume, &curParam);
 
-            P_old = P_cur;
-            P_cur = P_new;
+      T prevResidualNorm = this->residual.norm();
+        
+//      std::cout << "prevResidualNorm " << prevResidualNorm << std::endl; 
 
-            int idx = 0;
-            error = 0;
-            dest_coords = rotate_coords_transformation(P_cur);
-            for(int i = 0; i < cubeSize; ++i){
-                for(int j = 0; j < cubeSize; ++j){
-                    for(int k = 0; k < cubeSize; ++k){
-                        flatR(idx) = vol_target->at(i,j,k) - interpolator->interp(dest_coords(0,idx),dest_coords(1,idx),dest_coords(2,idx)) * weights[idx];
-                        error += flatR(idx)*flatR(idx);
-                        ++idx;
-                    }
-                }
-            }
-            //if error increases, step back
-            if(error > errors.back()){
-                P_old = P_cur;
-            }
-            else{
-                errors.push_back(error);
-                deltaP = (gradP * gradP.transpose()).inverse() * (-gradP*flatR);
-                P_new = P_cur - deltaP;
+      
+      for(; step < maxSteps; step++) {
+//        std::cout << "-------" << std::endl; 
+//        std::cout << "step " << step << std::endl; 
+//        std::cout << "curParam: " << std::endl <<
+//          curParam.transpose() << std::endl; 
+//        std::cout << "residualNorm: " << prevResidualNorm << std::endl; 
+//        std::cout << "residual(12305): " << residual(16911) << std::endl;
 
-                //check for convergence
-                int count = 0;
-                for (int i = 0; i < 6; ++i){
-                    if (abs(deltaP(i)) <  1e-5){
-                        count += 1;
-                    }
-                }
-                if (count == 6){//converged
-                    cout << "Converged in " << counter+1 << " iterations!" << endl;
-                    break;
-                }
-            }
-            ++counter;
+
+        //
+        // compute the direction of the next step
+        //
+        
+//        std::cout << "residualGradient(12305): " << std::endl <<
+//          residualGradient.col(12305).transpose() << std::endl;
+
+//        if(step == 1) 
+//        {
+//          std::string filePath("Moving_Weighted_Gauss_Newton_Fixed_M_New_Grad_tests/residualGradient");
+//          int outputFile = open(filePath.c_str(), O_WRONLY | O_CREAT, 0600);
+//    
+//          if(-1 == outputFile) {
+//            std::cerr << "Could not open file: " << filePath << std::endl;
+//            exit(1);
+//          }
+//
+//          int bytesWritten = 
+//              ::write(outputFile, residualGradient.data(),
+//                sizeof(T) * 6 * this->cubeSize * this->cubeSize * this->cubeSize);
+//    
+//          close(outputFile);
+//          
+//          exit(0);
+//        }
+
+
+//        {
+//          std::string filePath("Static_Weighted_Gauss_Newton_New_Grad_tests/residual_" + std::to_string(step));
+//          int outputFile = open(filePath.c_str(), O_WRONLY | O_CREAT, 0600);
+//    
+//          if(-1 == outputFile) {
+//            std::cerr << "Could not open file: " << filePath << std::endl;
+//            exit(1);
+//          }
+//
+//          int bytesWritten = 
+//              ::write(outputFile, residual.data(),
+//                sizeof(T) * this->cubeSize * this->cubeSize * this->cubeSize);
+//    
+//          close(outputFile);
+//        }
+
+        reducedResidual.noalias() = this->residualGradient * this->residual;
+    
+//        std::cout << "approxResidualHessian: " << std::endl <<
+//          this->approxResidualHessian << std::endl;
+//        
+//        std::cout << "reducedResidual: " << std::endl <<
+//          reducedResidual.transpose() << std::endl;
+
+        // This equation solves the parameter update, but with signs negated
+        ParamT negParamUpdateDirection;
+        negParamUpdateDirection.noalias() =
+          this->residualHessianLDL.solve(reducedResidual);
+       
+//        std::cout << "negParamUpdateDirection: " << std::endl <<
+//          negParamUpdateDirection.transpose() << std::endl;
+
+        //
+        // perform backtracking line search in the direction of the next step 
+        //
+     
+        T stepSize = 1.0;
+
+        bool improved = false;
+
+        ParamT paramUpdate;
+
+        while(!improved) {
+          searchStep++;
+
+          // negate this to get the correct sign for the update
+          paramUpdate = -negParamUpdateDirection * stepSize;
+ 
+          // now check to see if we've reached the convergence limit on our
+          // step size
+          if(
+            TestHelper<ConvergenceTestT>::eval(convergenceTest, &paramUpdate)
+            ) {
+              searchStep++; 
+              break; 
+          }
+
+          ParamT newParam =
+            ParamAccumulatorT::accumulate(&curParam, &paramUpdate);
+
+          computeResidual(newVolume, &newParam);
+
+          T newResidualNorm = this->residual.norm();
+
+          // If the residual has become smaller since the last step, take step 
+          if(newResidualNorm <= prevResidualNorm) {
+            prevResidualNorm = newResidualNorm;
+            curParam = newParam;
+            improved = true;
+          }
+          // otherwise, make the step smaller
+          else {
+            stepSize *= stepSizeScale; 
+          }
         }
-        return P_new;
+
+        // if we can't make an improvement by stepping in this direction
+        // then we should take no step and stop the minimization
+        if(!improved) {
+          break;
+        }
+       
+        // otherwise, we've found a good step, so we should apply it
+        residualGradientAndHessian->updateResidualGradientAndApproxHessian(
+          &transformedPointList,
+          &curParam,
+          refdz, refdy, refdx,
+          &residualGradient, &approxResidualHessian, 
+          &residualHessianLDL);
+      }
+
+      if(NULL != elapsedSteps) {
+        *elapsedSteps = step; 
+      }
+      
+      if(NULL != elapsedSearchSteps) {
+        *elapsedSearchSteps = searchStep; 
+      }
+
+      *finalParam = curParam;
+
     }
+
   protected:
-    const Interpolator3D<VolumeT, CoordT> *interpolator;
-    const VolumeT *volume;
-    Matrix_gradP gradP;
-    Matrix3X axis_derivatives;
+    const InterpolatorT *interpRef;
+    ResidualOpT *residualOp;
+    ResidualGradientAndHessianT *residualGradientAndHessian;
+    const size_t cubeSize;
+    const CoordT cubeCenter;
+    ResidualGradientT residualGradient;
+    ResidualHessianT approxResidualHessian;
+    ResidualHessianLDLT residualHessianLDL;
+    PointListT pointList;
+    PointListT transformedPointList;
+    ResidualT residual;
 };
 
 

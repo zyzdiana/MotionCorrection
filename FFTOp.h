@@ -1,58 +1,101 @@
 #ifndef FFTOp_h
 #define FFTOp_h
 
-#include "Interpolation_3D.h"
-#include "TricubicInterpolator.h"
-#include "CentralDifferenceDifferentiator.h"
-#include <stdio.h>
-#include <math.h>
-#include <iostream>
-#include <fstream>
+#include "VolumeAtAddressable.h"
+#include "SymmetricHalfVolumeAtAddressable.h"
+#include "FFTWBuffer.h"
+
+#include "fftw3.h"
+
 #include <complex>
-#include <vector>
 
-using namespace std;
-using namespace Eigen;
-
-class FFTOp{
-  public:
-    //const size_t cubeSize;
-    size_t cubeVectorLength;
-
-    FFTOp(const size_t cubeSize){
-      cubeVectorLength = cubeSize*cubeSize*cubeSize;
-	  size_t N_out =  cubeVectorLength/2 + 1;
-	  dataVector.resize(cubeVectorLength);
-
-	  p_forward = fftwf_plan_dft_r2c_1d(cubeVectorLength, &dataVector[0], output, FFTW_ESTIMATE);
-	  p_backward = fftwf_plan_dft_c2r_1d(cubeVectorLength, output, &dataVector[0], FFTW_ESTIMATE);
-    }
-
- 	~FFTOp(){
- 		fftwf_destroy_plan(p_forward);
- 		fftwf_destroy_plan(p_backward);
- 		fftwf_cleanup();
- 	}
-
-    void transform(std::vector<float>* volume, std::vector<float>* transformed){
-		fftwf_execute_dft_r2c(p_forward, &(volume->at(0)), output);
-		// int idx = 0;
-		// for(int z = 0; z < cubeSize; ++z){
-		//   for(int y = 0; y < cubeSize; ++y){
-		//       for(int x = 0; x < cubeSize; ++x){
-		//         T n = (coordT(z,y,x)-cubeCenter).norm();
-		//         out[idx][0] *= window(n, radius);
-		//         out[idx][1] *= window(n, radius);
-		//         idx += 1;
-		//       }
-		//   }
-		// }
-		fftwf_execute_dft_c2r(p_backward, output, &(transformed->at(0)));
-    }
-  protected:
-  	fftwf_plan p_forward;
-  	fftwf_plan p_backward;
-  	std::vector<float> dataVector;
-  	fftwf_complex *output;
+template <typename T>
+class FFTWPlanType {
 };
+
+template <>
+class FFTWPlanType<float> {
+  public:
+    typedef fftwf_plan PlanType;
+};
+
+template <>
+class FFTWPlanType< std::complex<float> > {
+  public:
+    typedef fftwf_plan PlanType;
+};
+
+template <>
+class FFTWPlanType<double> {
+  public:
+    typedef fftw_plan PlanType;
+};
+
+template <>
+class FFTWPlanType< std::complex<double> > {
+  public:
+    typedef fftw_plan PlanType;
+};
+
+template <typename T>
+class FFTFourierType {
+};
+
+template <>
+class FFTFourierType<float> {
+  public:
+    typedef std::complex<float> FourierType;
+    typedef
+      SymmetricHalfVolumeAtAddressable< FFTWBuffer< FourierType > >
+      FourierVolumeType;
+};
+
+template <>
+class FFTFourierType<double> {
+  public:
+    typedef std::complex<double> FourierType;
+    typedef
+      SymmetricHalfVolumeAtAddressable< FFTWBuffer< FourierType > >
+      FourierVolumeType;
+};
+
+
+template <typename _spatialT>
+class FFTOp {
+  public:
+    typedef _spatialT spatialT;
+    typedef typename FFTFourierType<spatialT>::FourierType fourierT;
+    typedef VolumeAtAddressable< FFTWBuffer<spatialT> > spatialVolumeT;
+    typedef
+      typename FFTFourierType<spatialT>::FourierVolumeType
+      fourierVolumeT;
+
+  public:
+    FFTOp(size_t cubeSize);
+
+ 	  ~FFTOp();
+
+
+    void forward( 
+      spatialVolumeT *spatial,
+      fourierVolumeT *fourier) const;
+    
+    void backward( 
+      fourierVolumeT *fourier,
+      spatialVolumeT *spatial) const;
+
+  protected:
+    static typename FFTWPlanType<spatialT>::PlanType
+      createForwardPlan(size_t cubeSize);
+    
+    static typename FFTWPlanType<spatialT>::PlanType
+      createBackwardPlan(size_t cubeSize);
+
+  protected:
+    const typename FFTWPlanType<spatialT>::PlanType forwardPlan;
+    const typename FFTWPlanType<spatialT>::PlanType backwardPlan;
+    const size_t cubeSize;
+};
+
+
 #endif
